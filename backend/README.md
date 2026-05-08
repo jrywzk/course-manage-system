@@ -110,7 +110,7 @@ npm run dev
 ```
 
 ### 3. 访问项目
-- 后端接口文档：http://localhost:9090/doc.html
+- 后端接口文档：http://localhost:9090/api/doc.html
 - 前端页面：http://localhost:5173
 
 ## 项目结构
@@ -139,7 +139,7 @@ src/
 ```
 
 ## API 文档
-项目集成了 Swagger/Knife4j，启动后访问：http://localhost:8080/doc.html
+项目集成了 Swagger/Knife4j，启动后访问：http://localhost:9090/api/doc.html
 
 ## 部署说明
 1. 使用 `mvn clean package` 打包后端项目

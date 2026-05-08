@@ -98,7 +98,7 @@
         <dependency>
             <groupId>org.projectlombok</groupId>
             <artifactId>lombok</artifactId>
-            <version>1.18.4</version>
+            <version>1.18.32</version>
             <scope>provided</scope>
         </dependency>
 
@@ -133,7 +133,6 @@
                 <version>${spring-boot.version}</version>
                 <configuration>
                     <mainClass>com.agiantii.backend.BackendApplication</mainClass>
-                    <skip>true</skip>
                 </configuration>
                 <executions>
                     <execution>
