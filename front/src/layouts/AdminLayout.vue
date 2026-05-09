@@ -84,8 +84,8 @@ const handleCommand = (command) => {
     justify-content: space-between;
     align-items: center;
     height: 100%;
-    width: 100%;
     padding: 0 20px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     
     h2 {
       margin: 0;

@@ -58,38 +58,9 @@
         </template>
 
         <el-table :data="studentList" style="width: 100%">
-          <el-table-column prop="studentId" label="学号" min-width="100" />
-          <el-table-column prop="name" label="姓名" min-width="100" />
-          <!-- TODO: 新版 enrollment 关联后显示教学班编号 -->
-          <el-table-column label="教学班编号" min-width="100">
-            <template #default>
-              <span class="text-placeholder">—</span>
-            </template>
-          </el-table-column>
-          <!-- TODO: 新版成绩接口分平时成绩、考试成绩、总评 -->
-          <el-table-column label="平时成绩" min-width="100" align="center">
-            <template #default>
-              <el-input-number
-                :model-value="0"
-                disabled
-                :min="0"
-                :max="100"
-                size="small"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column label="考试成绩" min-width="100" align="center">
-            <template #default>
-              <el-input-number
-                :model-value="0"
-                disabled
-                :min="0"
-                :max="100"
-                size="small"
-              />
-            </template>
-          </el-table-column>
-          <el-table-column label="总评成绩" min-width="120" align="center">
+          <el-table-column prop="studentId" label="学号" width="120" />
+          <el-table-column prop="name" label="姓名" min-width="120" />
+          <el-table-column label="成绩" width="200" align="center">
             <template #default="{ row }">
               <el-input-number
                 v-model="row.score"
@@ -101,7 +72,7 @@
               />
             </template>
           </el-table-column>
-          <el-table-column label="状态" min-width="80" align="center">
+          <el-table-column label="状态" width="100" align="center">
             <template #default="{ row }">
               <el-tag :type="getScoreTagType(row.score)">
                 {{ getScoreStatus(row.score) }}

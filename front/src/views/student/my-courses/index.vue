@@ -62,12 +62,9 @@
               <el-descriptions :column="2" border>
                 <el-descriptions-item label="课程代码">{{ props.row.id }}</el-descriptions-item>
                 <el-descriptions-item label="课程名称">{{ props.row.name }}</el-descriptions-item>
-                <el-descriptions-item label="教学班编号">{{ props.row.sectionCode || '—' }}</el-descriptions-item>
                 <el-descriptions-item label="任课教师">{{ props.row.teacherName }}</el-descriptions-item>
                 <el-descriptions-item label="学分">{{ props.row.credit }}</el-descriptions-item>
                 <el-descriptions-item label="开课学期">{{ props.row.term }}</el-descriptions-item>
-                <!-- TODO: 新版 enrollment 接口后启用 -->
-                <el-descriptions-item label="选课时间">{{ props.row.enrollTime || '—' }}</el-descriptions-item>
                 <el-descriptions-item label="课程状态">
                   <el-tag :type="props.row.status === 'active' ? 'success' : 'info'">
                     {{ props.row.status === 'active' ? '进行中' : '未开课' }}
@@ -77,34 +74,24 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column prop="name" label="课程名称" min-width="150" />
-        <el-table-column prop="sectionCode" label="教学班编号" min-width="110">
+        <el-table-column prop="name" label="课程名称" min-width="180" />
+        <el-table-column prop="teacherName" label="任课教师" width="120" />
+        <el-table-column prop="credit" label="学分" width="80" align="center" />
+        <el-table-column label="成绩" width="100" align="center">
           <template #default="{ row }">
-            {{ row.sectionCode || '—' }}
+            <span :class="getScoreClass(row.score)">{{ row.score || '-' }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="teacherName" label="任课教师" width="110" />
-        <el-table-column prop="credit" label="学分" width="70" align="center" />
-        <el-table-column prop="enrollTime" label="选课时间" min-width="140">
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            {{ row.enrollTime || '—' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-              {{ row.status === 'active' ? '进行中' : '已选' }}
+            <el-tag :type="row.status === 'active' ? 'success' : 'info'">
+              {{ row.status === 'active' ? '进行中' : '未开课' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="100" align="center">
+        <el-table-column label="操作" width="120" align="center">
           <template #default="{ row }">
-            <el-button
-              type="danger"
-              link
-              @click="handleDropCourse(row)"
-              <!-- TODO: 退课传 enrollmentId 或 sectionId -->
-            >
+            <el-button type="danger" link @click="handleDropCourse(row)">
               退课
             </el-button>
           </template>
@@ -185,8 +172,6 @@ const handleDropCourse = async (course) => {
       }
     )
 
-    // ⚠️ 旧链：score/deleteByCourseIdAndStudentIdAndTeacherId
-    // TODO: 新版应改为 enrollment/delete，传 enrollmentId 或 sectionId
     const studentId = localStorage.getItem('uid')
     await studentApi.deleteScore(
       course.id,

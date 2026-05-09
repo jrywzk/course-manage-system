@@ -10,11 +10,11 @@
 
     <!-- 教师列表 -->
     <el-card class="teacher-list" v-loading="loading">
-      <el-table :data="teacherList" style="width: 100%" :header-cell-style="{ textAlign: 'center' }">
-        <el-table-column prop="id" label="工号" min-width="150" />
-        <el-table-column prop="name" label="姓名" min-width="150" />
+      <el-table :data="teacherList" style="width: 100%">
+        <el-table-column prop="id" label="工号" width="120" />
+        <el-table-column prop="name" label="姓名" width="120" />
         <el-table-column prop="college" label="学院" min-width="180" />
-        <el-table-column label="操作" min-width="150" fixed="right" align="center">
+        <el-table-column label="操作" width="200" fixed="right" align="center">
           <template #default="{ row }">
             <el-button 
               type="success" 
@@ -65,8 +65,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button plain @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" plain @click="handleSubmit">确定</el-button>
+          <el-button @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" @click="handleSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>

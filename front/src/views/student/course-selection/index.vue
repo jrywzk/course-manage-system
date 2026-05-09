@@ -54,34 +54,15 @@
           </template>
         </el-table-column>
         <el-table-column prop="id" label="课程代码" width="120" />
-        <el-table-column prop="name" label="课程名称" min-width="150" />
-        <!-- TODO: 新版接 enrollment 后替换为 section_code -->
-        <el-table-column prop="sectionCode" label="教学班编号" min-width="120">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="teacherName" label="任课教师" width="110" />
-        <el-table-column prop="credit" label="学分" width="70" align="center" />
-        <!-- TODO: 新版预留字段 -->
-        <el-table-column prop="semester" label="学期" min-width="110">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="classroom" label="教室" min-width="120">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="容纳/已选" width="100" align="center">
-          <template #default>
-            <span class="text-placeholder">—/—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="80" align="center">
-          <template #default>
-            <el-tag size="small" type="info">待开放</el-tag>
+        <el-table-column prop="name" label="课程名称" min-width="180" />
+        <el-table-column prop="teacherName" label="任课教师" width="120" />
+        <el-table-column prop="credit" label="学分" width="80" align="center" />
+        <el-table-column prop="term" label="学期" width="180" />
+        <el-table-column prop="studentLimit" label="剩余容量" width="100" align="center">
+          <template #default="{ row }">
+            <el-tag :type="getCapacityTagType(row.studentLimit)">
+              {{ row.studentLimit }}
+            </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" fixed="right" width="120" align="center">
@@ -220,7 +201,7 @@ const isSelectionDisabled = (course) => {
   return false
 }
 
-// TODO: 旧 score/insert 入口，等待 C 完成新版 enrollment 接口后替换
+// 处理选课/退课
 const handleSelection = async (course) => {
   if (course.selected) {
     // 退课确认
@@ -235,7 +216,6 @@ const handleSelection = async (course) => {
         }
       )
 
-      // ⚠️ 旧链：score/delete，新版应改为 enrollment/deleteBySectionId
       const studentId = localStorage.getItem('uid')
       await studentApi.deleteScore(
         course.id,
@@ -259,7 +239,6 @@ const handleSelection = async (course) => {
     }
     
     try {
-      // ⚠️ 旧链：score/insert，新版应改为 enrollment/insertBySectionId
       const studentId = localStorage.getItem('uid')
       await studentApi.addScore(
         course.id,

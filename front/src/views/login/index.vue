@@ -8,8 +8,8 @@
     
     <el-card class="login-card">
       <template #header>
-        <h2 class="login-title">学生选课管理系统</h2>
-        <div class="sub-title">教学管理平台</div>
+        <h2>学生选课管理系统</h2>
+        <div class="sub-title">Student Course Management System</div>
       </template>
       
       <el-form 
@@ -17,13 +17,13 @@
         :rules="rules" 
         ref="loginFormRef"
         v-loading="loading"
-        element-loading-text="正在登录..."
+        element-loading-text="登录中..."
         element-loading-background="rgba(0, 0, 0, 0.5)"
       >
         <el-form-item prop="username">
           <el-input 
             v-model="loginForm.username"
-            placeholder="请输入学号 / 工号"
+            placeholder="请输入学号/工号"
             prefix-icon="User"
             :input-style="{ color: '#fff' }"
             :disabled="loading"
@@ -34,7 +34,7 @@
           <el-input 
             v-model="loginForm.password"
             type="password"
-            placeholder="请输入密码"
+            placeholder="密码"
             prefix-icon="Lock"
             show-password
             :input-style="{ color: '#fff' }"
@@ -48,16 +48,14 @@
           @click="handleLogin"
           :loading="loading"
         >
-          <span class="button-text">{{ loading ? '正在登录...' : '登 录' }}</span>
+          <span class="button-text">{{ loading ? '登录中...' : '登录' }}</span>
           <el-icon class="button-icon" v-if="!loading"><ArrowRight /></el-icon>
         </el-button>
       </el-form>
       
       <div class="demo-info">
-        <p class="demo-title">演示账号</p>
-        <p>管理员：账号 1，密码 123</p>
-        <p>教师：账号 2，密码 123</p>
-        <p>学生：账号 3，密码 123</p>
+        <p>管理员账号: 1</p>
+        <p>管理员密码: 123</p>
       </div>
     </el-card>
   </div>
@@ -135,18 +133,18 @@ const handleLogin = async () => {
 
       if (routes[role]) {
         router.push(routes[role])
-        ElMessage.success('登录成功，正在跳转...')
+        ElMessage.success('登录成功')
       } else {
-        ElMessage.error('登录失败：无效的用户角色')
+        ElMessage.error('无效的用户角色')
         localStorage.removeItem('uid')
         localStorage.removeItem('role')
       }
     } else {
-      ElMessage.error('登录失败：账号或密码错误')
+      ElMessage.error('登录失败')
     }
   } catch (error) {
     console.error('Login error:', error)
-    ElMessage.error('登录失败，请检查账号和密码是否正确')
+    ElMessage.error('登录失败，请检查账号密码')
   } finally {
     loading.value = false
   }
@@ -163,7 +161,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #1a1b2e, #12131f);
+  background: linear-gradient(135deg, #1a1a2e, #0a0a1a);
   position: relative;
   overflow: hidden;
 }
@@ -236,23 +234,21 @@ onMounted(() => {
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
     
-    .login-title {
+    h2 {
       margin: 0;
-      font-size: 26px;
-      font-weight: 700;
+      color: #fff;
+      font-size: 24px;
       background: linear-gradient(45deg, #409EFF, #67C23A);
       -webkit-background-clip: text;
       -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: 3px;
-      margin-bottom: 6px;
+      letter-spacing: 2px;
+      margin-bottom: 5px;
     }
     
     .sub-title {
-      font-size: 14px;
-      color: rgba(255, 255, 255, 0.55);
-      letter-spacing: 2px;
-      font-weight: 400;
+      font-size: 12px;
+      color: rgba(255, 255, 255, 0.6);
+      letter-spacing: 1px;
     }
   }
   
