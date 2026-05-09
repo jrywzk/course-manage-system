@@ -1,8 +1,12 @@
 .courses-container {
+  width: 100%;
+  padding: 20px 24px;
+
   .action-bar {
     display: flex;
-    justify-content: space-between;
-    margin-bottom: 20px;
+    justify-content: flex-end;
+    gap: 12px;
+    margin-bottom: 16px;
     
     .search-group {
       display: flex;

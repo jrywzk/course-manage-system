@@ -25,15 +25,24 @@
     <!-- 课程列表 -->
     <el-card class="course-list" v-loading="loading">
       <el-table :data="courseList" style="width: 100%">
-        <el-table-column prop="id" label="课程代码" width="120" />
-        <el-table-column prop="name" label="课程名称" min-width="180" />
-        <el-table-column prop="credit" label="学分" width="80" align="center" />
-        <el-table-column label="开课日期" width="180">
+        <el-table-column prop="id" label="课程代码" min-width="100" />
+        <el-table-column prop="name" label="课程名称" min-width="140" />
+        <!-- TODO: 新版 course_section 接口后展开展示教学班列表 -->
+        <el-table-column label="教学班" min-width="180">
+          <template #default="{ row }">
+            <div class="section-list">
+              <span class="text-placeholder">共 {{ row.sectionCount || 0 }} 个教学班</span>
+              <el-button type="primary" link size="small">查看详情</el-button>
+            </div>
+          </template>
+        </el-table-column>
+        <el-table-column prop="credit" label="学分" min-width="70" align="center" />
+        <el-table-column label="开课日期" min-width="130">
           <template #default="{ row }">
             {{ formatDate(row.term) }}
           </template>
         </el-table-column>
-        <el-table-column prop="studentLimit" label="选课人数" width="120" align="center">
+        <el-table-column prop="studentLimit" label="选课人数" min-width="110" align="center">
           <template #default="{ row }">
             <div class="capacity-info">
               <div class="capacity-text">
@@ -50,36 +59,20 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" width="100" align="center">
+        <el-table-column label="状态" min-width="80" align="center">
           <template #default="{ row }">
             <el-tag :type="row.status === 'active' ? 'success' : 'info'">
               {{ row.status === 'active' ? '进行中' : '未开课' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="250" fixed="right" align="center">
+        <el-table-column label="操作" min-width="220" fixed="right" align="center">
           <template #default="{ row }">
-            <el-button 
-              type="primary" 
-              link
-              @click="handleGrades(row)"
-            >
-              成绩管理
-            </el-button>
-            <el-button 
-              type="success" 
-              link
-              @click="handleEdit(row)"
-            >
-              编辑
-            </el-button>
-            <el-button 
-              type="danger" 
-              link
-              @click="handleDelete(row)"
-            >
-              删除
-            </el-button>
+            <el-button type="primary" link @click="handleGrades(row)">成绩管理</el-button>
+            <el-button type="success" link @click="handleEdit(row)">编辑</el-button>
+            <!-- TODO: 依赖旧 deleteByCourseId 接口，新版接口确认后再启用
+            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
+            -->
           </template>
         </el-table-column>
       </el-table>
