@@ -10,13 +10,13 @@
 
     <!-- 课程列表 -->
     <el-card class="course-list" v-loading="loading">
-      <el-table :data="courseList" style="width: 100%">
-        <el-table-column prop="id" label="课程代码" width="120" />
-        <el-table-column prop="name" label="课程名称" min-width="180" />
-        <el-table-column prop="credit" label="学分" width="80" align="center" />
-        <el-table-column prop="term" label="开课日期" width="180" />
-        <el-table-column prop="teacherName" label="授课教师" width="120" />
-        <el-table-column prop="studentLimit" label="选课人数" width="120" align="center">
+      <el-table :data="courseList" style="width: 100%" :header-cell-style="{ textAlign: 'center' }">
+        <el-table-column prop="id" label="课程代码" min-width="120" />
+        <el-table-column prop="name" label="课程名称" min-width="160" />
+        <el-table-column prop="credit" label="学分" min-width="80" align="center" />
+        <el-table-column prop="term" label="开课日期" min-width="140" />
+        <el-table-column prop="teacherName" label="授课教师" min-width="120" />
+        <el-table-column prop="studentLimit" label="选课人数" min-width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="getCapacityTagType(row.selectedCount, row.studentLimit)">
               {{ row.selectedCount }}/{{ row.studentLimit }}
@@ -32,6 +32,7 @@
             >
               编辑
             </el-button>
+            <!-- TODO: 依赖旧 deleteByCourseId 接口，新版接口确认后再启用
             <el-button 
               type="danger" 
               link
@@ -39,6 +40,7 @@
             >
               删除
             </el-button>
+            -->
           </template>
         </el-table-column>
       </el-table>
@@ -103,8 +105,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button plain @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" plain @click="handleSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>

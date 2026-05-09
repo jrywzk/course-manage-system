@@ -69,18 +69,42 @@
       </template>
 
       <el-table :data="gradeList" style="width: 100%">
-        <el-table-column prop="term" label="学期" width="180" />
-        <el-table-column prop="courseId" label="课程代码" width="120" />
-        <el-table-column prop="courseName" label="课程名称" min-width="180" />
-        <el-table-column prop="credit" label="学分" width="80" align="center" />
-        <el-table-column prop="score" label="成绩" width="100" align="center">
+        <el-table-column prop="term" label="学期" min-width="120" />
+        <el-table-column prop="courseId" label="课程代码" min-width="100" />
+        <el-table-column prop="courseName" label="课程名称" min-width="140" />
+        <!-- TODO: 新版 enrollment 接口后替换为 section_code -->
+        <el-table-column label="教学班编号" min-width="110">
+          <template #default>
+            <span class="text-placeholder">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="credit" label="学分" width="70" align="center" />
+        <!-- TODO: 新版成绩接口拆为平时/考试/总评 -->
+        <el-table-column label="平时成绩" width="90" align="center">
+          <template #default>
+            <span class="text-placeholder">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="考试成绩" width="90" align="center">
+          <template #default>
+            <span class="text-placeholder">—</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="score" label="总评成绩" width="100" align="center">
           <template #default="{ row }">
             <span :class="getGradeClass(row.score)">{{ row.score }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="gpa" label="绩点" width="80" align="center">
+        <el-table-column prop="gpa" label="绩点" width="70" align="center">
           <template #default="{ row }">
             {{ studentApi.getGradePoint(row.score).toFixed(1) }}
+          </template>
+        </el-table-column>
+        <el-table-column label="是否通过" width="90" align="center">
+          <template #default="{ row }">
+            <el-tag :type="(row.score || 0) >= 60 ? 'success' : 'danger'" size="small">
+              {{ (row.score || 0) >= 60 ? '通过' : '未通过' }}
+            </el-tag>
           </template>
         </el-table-column>
       </el-table>
