@@ -26,3 +26,6 @@ hs_err_pid*
 
 # Local frontend cache
 front/.npm-cache/
+
+# Local Codex instructions for this workspace
+AGENTS.md
