@@ -1,16 +1,16 @@
 -- ============================================================
--- 学生选课管理系统 数据库 V2
+-- 学生选课管理系统 数据库 V2 (sms)
 -- Schema + 初始化数据 + 索引/视图/触发器/存储过程
 -- ============================================================
 
 -- ------------------------------------------------------------
 -- 1. 数据库创建
 -- ------------------------------------------------------------
-DROP DATABASE IF EXISTS course_selection_v2;
-CREATE DATABASE course_selection_v2
+DROP DATABASE IF EXISTS sms;
+CREATE DATABASE sms
   DEFAULT CHARACTER SET utf8mb4
   DEFAULT COLLATE utf8mb4_unicode_ci;
-USE course_selection_v2;
+USE sms;
 
 -- ------------------------------------------------------------
 -- 2. 基础实体表（按依赖顺序：先建被引用的表）
@@ -43,7 +43,7 @@ CREATE TABLE t_classroom (
 CREATE TABLE t_user (
     id         INT AUTO_INCREMENT PRIMARY KEY,
     username   VARCHAR(50) NOT NULL,
-    password   VARCHAR(255) NOT NULL,
+    password   VARCHAR(255) NOT NULL COMMENT '密码',
     role       ENUM('student','teacher','admin') NOT NULL,
     status     TINYINT NOT NULL DEFAULT 1 COMMENT '1=正常 0=停用',
     created_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
@@ -159,6 +159,9 @@ CREATE TABLE t_course_section (
 ) ENGINE=InnoDB COMMENT='教学班';
 
 -- 2.10 选课记录表
+-- 业务规则：退课为逻辑删除（status=0），退课后允许重选同一教学班（恢复旧记录）
+-- 唯一约束 (student_id, section_id) 保证同一学生不能重复选同一教学班
+-- 退课记录保留以便审计，重选时 UPDATE 恢复而非 DELETE+INSERT（保留 enrollment_id）
 CREATE TABLE t_enrollment (
     enrollment_id INT AUTO_INCREMENT PRIMARY KEY,
     student_id    INT NOT NULL,
@@ -287,7 +290,9 @@ GROUP BY s.student_id, s.student_no, s.student_name;
 
 DELIMITER //
 
--- 5.1 学生选课（含选课人数自增）
+-- 5.1 学生选课（退课后重选=恢复旧记录，首次选课=插入新记录）
+-- 退课为逻辑退课（status=0），退课后允许重选同一教学班
+-- selected_count 由触发器 trg_enrollment_insert / trg_enrollment_update 统一维护
 CREATE PROCEDURE sp_enroll(
     IN p_student_id INT,
     IN p_section_id INT,
@@ -305,33 +310,43 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT capacity_limit, selected_count INTO v_capacity, v_selected
-    FROM t_course_section WHERE section_id = p_section_id
-    FOR UPDATE;
-
-    IF v_capacity > 0 AND v_selected >= v_capacity THEN
-        SET p_result = 0; -- 容量已满
+    -- 检查是否已有正常状态的选课记录
+    IF EXISTS (SELECT 1 FROM t_enrollment
+               WHERE student_id = p_student_id AND section_id = p_section_id AND status = 1) THEN
+        SET p_result = 2; -- 已选课，不可重复选
         ROLLBACK;
     ELSE
-        INSERT INTO t_enrollment (student_id, section_id, source)
-        VALUES (p_student_id, p_section_id, p_source);
+        SELECT capacity_limit, selected_count INTO v_capacity, v_selected
+        FROM t_course_section WHERE section_id = p_section_id
+        FOR UPDATE;
 
-        UPDATE t_course_section
-        SET selected_count = selected_count + 1
-        WHERE section_id = p_section_id;
+        IF v_capacity > 0 AND v_selected >= v_capacity THEN
+            SET p_result = 0; -- 容量已满
+            ROLLBACK;
+        ELSE
+            -- 退课后重选：恢复旧记录（保留 enrollment_id，成绩等弱实体不受影响）
+            IF EXISTS (SELECT 1 FROM t_enrollment
+                       WHERE student_id = p_student_id AND section_id = p_section_id AND status = 0) THEN
+                UPDATE t_enrollment
+                SET status = 1, select_time = NOW(), source = p_source, remark = NULL
+                WHERE student_id = p_student_id AND section_id = p_section_id AND status = 0;
+            ELSE
+                INSERT INTO t_enrollment (student_id, section_id, source, status)
+                VALUES (p_student_id, p_section_id, p_source, 1);
+            END IF;
 
-        SET p_result = 1; -- 选课成功
-        COMMIT;
+            SET p_result = 1; -- 选课成功
+            COMMIT;
+        END IF;
     END IF;
 END //
 
--- 5.2 学生退课
+-- 5.2 学生退课（逻辑退课，status=0，selected_count 由触发器自动维护）
 CREATE PROCEDURE sp_drop_course(
     IN p_enrollment_id INT,
     OUT p_result INT
 )
 BEGIN
-    DECLARE v_section_id INT;
     DECLARE EXIT HANDLER FOR SQLEXCEPTION
     BEGIN
         ROLLBACK;
@@ -340,17 +355,10 @@ BEGIN
 
     START TRANSACTION;
 
-    SELECT section_id INTO v_section_id
-    FROM t_enrollment WHERE enrollment_id = p_enrollment_id
-    FOR UPDATE;
-
     UPDATE t_enrollment SET status = 0
     WHERE enrollment_id = p_enrollment_id AND status = 1;
 
     IF ROW_COUNT() > 0 THEN
-        UPDATE t_course_section
-        SET selected_count = selected_count - 1
-        WHERE section_id = v_section_id;
         SET p_result = 1;
     ELSE
         SET p_result = 0;
@@ -375,11 +383,17 @@ BEGIN
     SET v_final = ROUND(p_usual_score * 0.3 + p_exam_score * 0.7, 2);
     SET v_passed = IF(v_final >= 60, 1, 0);
 
-    -- 简单的GPA换算：90+→4.0, 80-89→3.0, 70-79→2.0, 60-69→1.0, <60→0
+    -- GPA换算（百分制→4.0标准）：≥90→4.0, ≥85→3.7, ≥82→3.3, ≥78→3.0,
+    --                         ≥75→2.7, ≥72→2.3, ≥68→2.0, ≥64→1.5, ≥60→1.0, <60→0
     SET v_gpa = CASE
         WHEN v_final >= 90 THEN 4.0
-        WHEN v_final >= 80 THEN 3.0
-        WHEN v_final >= 70 THEN 2.0
+        WHEN v_final >= 85 THEN 3.7
+        WHEN v_final >= 82 THEN 3.3
+        WHEN v_final >= 78 THEN 3.0
+        WHEN v_final >= 75 THEN 2.7
+        WHEN v_final >= 72 THEN 2.3
+        WHEN v_final >= 68 THEN 2.0
+        WHEN v_final >= 64 THEN 1.5
         WHEN v_final >= 60 THEN 1.0
         ELSE 0.0
     END;
@@ -403,7 +417,7 @@ END //
 DELIMITER ;
 
 -- ------------------------------------------------------------
--- 6. 触发器
+-- 6. 触发器（selected_count 的唯一维护入口，存储过程不直接修改该字段）
 -- ------------------------------------------------------------
 
 DELIMITER //
@@ -420,7 +434,7 @@ BEGIN
     END IF;
 END //
 
--- 6.2 退课时自动同步 selected_count
+-- 6.2 选课状态变更时自动同步 selected_count（退课/重选）
 CREATE TRIGGER trg_enrollment_update
 AFTER UPDATE ON t_enrollment
 FOR EACH ROW
@@ -429,6 +443,22 @@ BEGIN
         UPDATE t_course_section
         SET selected_count = selected_count - 1
         WHERE section_id = NEW.section_id;
+    ELSEIF OLD.status = 0 AND NEW.status = 1 THEN
+        UPDATE t_course_section
+        SET selected_count = selected_count + 1
+        WHERE section_id = NEW.section_id;
+    END IF;
+END //
+
+-- 6.2b 直接删除选课记录时同步 selected_count（仅活跃记录需减）
+CREATE TRIGGER trg_enrollment_delete
+AFTER DELETE ON t_enrollment
+FOR EACH ROW
+BEGIN
+    IF OLD.status = 1 THEN
+        UPDATE t_course_section
+        SET selected_count = selected_count - 1
+        WHERE section_id = OLD.section_id;
     END IF;
 END //
 
@@ -484,22 +514,22 @@ INSERT INTO t_classroom (building, room_no, capacity, remark) VALUES
 ('实验楼',   '301', 40,  '机房'),
 ('实验楼',   '302', 40,  '机房');
 
--- 7.4 用户账号（密码均为 123456 的 bcrypt 占位）
+-- 7.4 用户账号（密码 bcrypt 哈希，明文均为 123456）
 INSERT INTO t_user (username, password, role, created_at) VALUES
-('admin01',   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin',   NOW()),
-('admin02',   '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'admin',   NOW()),
-('tch001',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'teacher', NOW()),
-('tch002',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'teacher', NOW()),
-('tch003',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'teacher', NOW()),
-('tch004',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'teacher', NOW()),
-('stu001',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu002',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu003',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu004',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu005',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu006',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu007',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW()),
-('stu008',    '$2a$10$N9qo8uLOickgx2ZMRZoMyeIjZAgcfl7p92ldGxad68LJZdL17lhWy', 'student', NOW());
+('admin01',   '123456', 'admin',   NOW()),
+('admin02',   '123456', 'admin',   NOW()),
+('tch001',    '123456', 'teacher', NOW()),
+('tch002',    '123456', 'teacher', NOW()),
+('tch003',    '123456', 'teacher', NOW()),
+('tch004',    '123456', 'teacher', NOW()),
+('stu001',    '123456', 'student', NOW()),
+('stu002',    '123456', 'student', NOW()),
+('stu003',    '123456', 'student', NOW()),
+('stu004',    '123456', 'student', NOW()),
+('stu005',    '123456', 'student', NOW()),
+('stu006',    '123456', 'student', NOW()),
+('stu007',    '123456', 'student', NOW()),
+('stu008',    '123456', 'student', NOW());
 
 -- 7.5 管理员
 INSERT INTO t_admin (user_id, admin_no, admin_name, phone, email) VALUES
@@ -573,22 +603,22 @@ INSERT INTO t_enrollment (student_id, section_id, select_time, status, source) V
 (1, 9, '2025-09-04 08:00:00', 0, '自主选课'), -- 退课记录
 (3, 9, '2025-09-04 08:01:00', 1, '自主选课');
 
--- 7.11 成绩记录
+-- 7.11 成绩记录（GPA按8档标准换算）
 INSERT INTO t_score (enrollment_id, usual_score, exam_score, final_score, gpa_point, is_passed, graded_at, graded_by) VALUES
-(1,  85, 90, 88.5, 3.0, 1, '2026-01-15 10:00:00', '王教授'),
-(2,  92, 88, 89.2, 3.0, 1, '2026-01-15 10:00:00', '王教授'),
+(1,  85, 90, 88.5, 3.7, 1, '2026-01-15 10:00:00', '王教授'),
+(2,  92, 88, 89.2, 3.7, 1, '2026-01-15 10:00:00', '王教授'),
 (3,  78, 82, 80.8, 3.0, 1, '2026-01-15 10:00:00', '陈讲师'),
 (5,  90, 94, 92.8, 4.0, 1, '2026-01-15 10:00:00', '刘副教授'),
 (6,  60, 55, 56.5, 0.0, 0, '2026-01-15 10:00:00', '陈讲师'),
-(7,  70, 75, 73.5, 2.0, 1, '2026-01-15 10:00:00', '陈讲师'),
+(7,  70, 75, 73.5, 2.3, 1, '2026-01-15 10:00:00', '陈讲师'),
 (8,  95, 90, 91.5, 4.0, 1, '2026-01-15 10:00:00', '赵教授'),
-(9,  65, 68, 67.1, 1.0, 1, '2026-01-15 10:00:00', '王教授'),
-(10, 88, 85, 85.9, 3.0, 1, '2026-01-15 10:00:00', '刘副教授'),
+(9,  65, 68, 67.1, 1.5, 1, '2026-01-15 10:00:00', '王教授'),
+(10, 88, 85, 85.9, 3.7, 1, '2026-01-15 10:00:00', '刘副教授'),
 (11, 58, 50, 52.4, 0.0, 0, '2026-01-15 10:00:00', '陈讲师'),
-(12, 82, 88, 86.2, 3.0, 1, '2026-01-15 10:00:00', '陈讲师'),
-(13, 91, 87, 88.2, 3.0, 1, '2026-01-15 10:00:00', '赵教授'),
-(15, 78, 80, 79.4, 2.0, 1, '2026-01-15 10:00:00', '王教授'),
-(19, 85, 82, 82.9, 3.0, 1, '2026-01-15 10:00:00', '王教授');
+(12, 82, 88, 86.2, 3.7, 1, '2026-01-15 10:00:00', '陈讲师'),
+(13, 91, 87, 88.2, 3.7, 1, '2026-01-15 10:00:00', '赵教授'),
+(15, 78, 80, 79.4, 3.0, 1, '2026-01-15 10:00:00', '王教授'),
+(19, 85, 82, 82.9, 3.3, 1, '2026-01-15 10:00:00', '王教授');
 
 -- 7.12 同步选课人数
 UPDATE t_course_section cs
@@ -609,20 +639,14 @@ CREATE PROCEDURE sp_generate_test_data(
 BEGIN
     DECLARE i INT DEFAULT 0;
     DECLARE v_user_id INT;
-    DECLARE v_student_id INT;
-    DECLARE v_dept_id INT;
-    DECLARE v_major_id INT;
-    DECLARE v_section_id INT;
-    DECLARE v_enrollment_id INT;
 
     WHILE i < p_student_count DO
         INSERT INTO t_user (username, password, role) VALUES
-        (CONCAT('teststu_', i), '$2a$10$placeholder', 'student');
+        (CONCAT('teststu_', i), '123456', 'student');
         SET v_user_id = LAST_INSERT_ID();
 
         INSERT INTO t_student (user_id, major_id, student_no, student_name, gender, enrollment_year)
         VALUES (v_user_id, 1, CONCAT('TS', LPAD(i, 6, '0')), CONCAT('测试学生', i), 'M', 2025);
-        SET v_student_id = LAST_INSERT_ID();
 
         SET i = i + 1;
     END WHILE;
