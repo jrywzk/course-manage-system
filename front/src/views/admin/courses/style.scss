@@ -1,57 +1,18 @@
 .courses-container {
   width: 100%;
-  padding: 20px 24px;
+  padding: 20px;
 
   .action-bar {
     display: flex;
-    justify-content: flex-end;
+    justify-content: flex-start;
+    align-items: center;
     gap: 12px;
-    margin-bottom: 16px;
+    margin-bottom: 14px;
   }
   
   .course-list {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    &:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      box-shadow: 
-        0 15px 30px rgba(0, 0, 0, 0.2),
-        0 0 30px rgba(64, 158, 255, 0.1);
-    }
-    
-    :deep(.el-table) {
-      background-color: transparent;
-      
-      th, td {
-        background-color: transparent;
-        transition: background-color 0.3s ease;
-      }
-      
-      th {
-        background-color: rgba(255, 255, 255, 0.02);
-        color: var(--el-text-color-regular);
-        font-weight: 600;
-      }
-      
-      td {
-        color: var(--el-text-color-primary);
-      }
-      
-      tr:hover > td {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-      }
-      
-      .el-table__row {
-        transition: transform 0.3s ease;
-        
-        &:hover {
-          transform: translateX(5px);
-        }
-      }
-    }
+    width: 100%;
+    border: 1px solid var(--border-color);
   }
   
   .w-full {

@@ -1,7 +1,7 @@
 <template>
   <div class="grades-container">
     <!-- 课程选择 -->
-    <el-card class="select-card" v-if="!selectedCourse">
+<el-card class="section-card" v-if="!selectedCourse">
       <template #header>
         <div class="card-header">
           <span>选择课程</span>
@@ -42,10 +42,10 @@
           <h3>{{ selectedCourse.name }}</h3>
           <p>{{ selectedCourse.term }} | 学分: {{ selectedCourse.credit }}</p>
         </div>
-        <el-button @click="handleBack">返回课程列表</el-button>
+        <el-button type="success" @click="handleBack">返回课程列表</el-button>
       </div>
 
-      <el-card class="grades-list" v-loading="loading">
+      <el-card class="section-card" v-loading="loading">
         <template #header>
           <div class="card-header">
             <span>学生成绩列表</span>

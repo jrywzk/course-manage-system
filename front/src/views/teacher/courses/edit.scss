@@ -2,73 +2,10 @@
   .edit-card {
     max-width: 800px;
     margin: 0 auto;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(20px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.4s cubic-bezier(0.4, 0, 0.2, 1);
-    
-    &:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      box-shadow: 
-        0 15px 30px rgba(0, 0, 0, 0.2),
-        0 0 30px rgba(64, 158, 255, 0.1);
-    }
-    
-    .card-header {
-      display: flex;
-      justify-content: space-between;
-      align-items: center;
-      padding: 20px;
-      border-bottom: 1px solid rgba(255, 255, 255, 0.1);
-      
-      span {
-        font-size: 18px;
-        font-weight: 500;
-        background: linear-gradient(45deg, #409EFF, #67C23A);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        letter-spacing: 1px;
-      }
-    }
   }
   
   .edit-form {
     padding: 20px;
-    
-    :deep(.el-form-item__label) {
-      color: var(--el-text-color-regular);
-    }
-    
-    :deep(.el-input__wrapper),
-    :deep(.el-textarea__wrapper) {
-      background-color: rgba(255, 255, 255, 0.03);
-      box-shadow: none;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      border-radius: 8px;
-      transition: all 0.3s ease;
-      
-      &:hover {
-        border-color: rgba(255, 255, 255, 0.2);
-        box-shadow: 0 0 15px rgba(64, 158, 255, 0.1);
-      }
-      
-      &:focus-within {
-        border-color: #409EFF;
-        box-shadow: 
-          0 0 0 1px #409EFF,
-          0 0 15px rgba(64, 158, 255, 0.2);
-      }
-      
-      .el-input__inner {
-        color: var(--el-text-color-primary);
-        height: 40px;
-        font-size: 14px;
-        
-        &::placeholder {
-          color: var(--el-text-color-placeholder);
-        }
-      }
-    }
     
     :deep(.el-input-number) {
       width: 180px;

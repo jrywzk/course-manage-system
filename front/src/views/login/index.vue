@@ -8,8 +8,7 @@
     
     <el-card class="login-card">
       <template #header>
-        <h2 class="login-title">学生选课管理系统</h2>
-        <div class="sub-title">教学管理平台</div>
+        <AppLogo landing class="login-logo" />
       </template>
       
       <el-form 
@@ -17,7 +16,7 @@
         :rules="rules" 
         ref="loginFormRef"
         v-loading="loading"
-        element-loading-text="正在登录..."
+        element-loading-text="正在登录，请稍候..."
         element-loading-background="rgba(0, 0, 0, 0.5)"
       >
         <el-form-item prop="username">
@@ -48,7 +47,7 @@
           @click="handleLogin"
           :loading="loading"
         >
-          <span class="button-text">{{ loading ? '正在登录...' : '登 录' }}</span>
+          <span class="button-text">{{ loading ? '登录中...' : '登 录' }}</span>
           <el-icon class="button-icon" v-if="!loading"><ArrowRight /></el-icon>
         </el-button>
       </el-form>
@@ -69,6 +68,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
 import http from '@/api/index.js'
+import AppLogo from '@/components/AppLogo.vue'
 import './style.scss'
 
 const router = useRouter()
@@ -235,17 +235,12 @@ onMounted(() => {
   :deep(.el-card__header) {
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 24px 20px 16px;
     
-    .login-title {
-      margin: 0;
-      font-size: 26px;
-      font-weight: 700;
-      background: linear-gradient(45deg, #409EFF, #67C23A);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      background-clip: text;
-      letter-spacing: 3px;
-      margin-bottom: 6px;
+    .login-logo {
+      display: flex;
+      justify-content: center;
+      margin: 0 auto;
     }
     
     .sub-title {

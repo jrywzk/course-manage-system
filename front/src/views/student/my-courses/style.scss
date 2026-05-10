@@ -4,10 +4,6 @@
   }
   
   .stat-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
     .stat-content {
       display: flex;
       align-items: center;
@@ -18,9 +14,8 @@
         margin-right: 20px;
         
         .el-icon {
-          background: linear-gradient(45deg, var(--el-color-primary), var(--el-color-success));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--el-color-primary);
+          font-size: 40px;
         }
       }
       
@@ -41,10 +36,6 @@
   }
   
   .course-list {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -54,29 +45,6 @@
     .course-detail {
       padding: 20px;
       background: rgba(255, 255, 255, 0.02);
-    }
-  }
-  
-  :deep(.el-table) {
-    background-color: transparent;
-    
-    th, td {
-      background-color: transparent;
-      transition: background-color 0.3s ease;
-    }
-    
-    th {
-      color: var(--el-text-color-regular);
-      font-weight: 600;
-      background-color: rgba(255, 255, 255, 0.02);
-    }
-    
-    td {
-      color: var(--el-text-color-primary);
-    }
-    
-    tr:hover > td {
-      background-color: rgba(255, 255, 255, 0.05) !important;
     }
   }
   
@@ -92,6 +60,7 @@
   
   .score-pass {
     color: #E6A23C;
+    font-weight: 600;
   }
   
   .score-fail {

@@ -1,3 +1,11 @@
 @import './base.css';
 
 /* 全局布局重置，不限制宽度 */
+#app {
+  max-width: none;
+  margin: 0;
+  padding: 0;
+  font-weight: normal;
+  width: 100%;
+  min-height: 100vh;
+}
