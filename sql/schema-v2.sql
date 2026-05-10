@@ -1,6 +1,11 @@
 -- ============================================================
--- 学生选课管理系统 数据库 V2 (sms)
+-- 学生选课管理系统 数据库 V2 (course_selection_v3)
 -- Schema + 初始化数据 + 索引/视图/触发器/存储过程
+--
+-- 【版本说明】本文件为当前轮次评审通过的新版数据库草稿，是后续
+--            前后端改造与协作的统一参考基线。
+--            仓库中其他旧 SQL 文件（sms.sql / sms-struct.sql 等）
+--            仅保留备查，不再作为新版开发口径。
 -- ============================================================
 
 -- ------------------------------------------------------------
@@ -244,7 +249,7 @@ SELECT
     sc.gpa_point,
     sc.is_passed
 FROM t_student s
-JOIN t_enrollment e ON s.student_id = e.student_id
+JOIN t_enrollment e ON s.student_id = e.student_id AND e.status = 1
 JOIN t_course_section cs ON e.section_id = cs.section_id
 JOIN t_course c ON cs.course_id = c.course_id
 JOIN t_teacher t ON cs.teacher_id = t.teacher_id
@@ -514,7 +519,7 @@ INSERT INTO t_classroom (building, room_no, capacity, remark) VALUES
 ('实验楼',   '301', 40,  '机房'),
 ('实验楼',   '302', 40,  '机房');
 
--- 7.4 用户账号（密码 bcrypt 哈希，明文均为 123456）
+-- 7.4 用户账号（明文均为 123456）
 INSERT INTO t_user (username, password, role, created_at) VALUES
 ('admin01',   '123456', 'admin',   NOW()),
 ('admin02',   '123456', 'admin',   NOW()),
