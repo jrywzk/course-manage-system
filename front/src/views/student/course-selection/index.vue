@@ -21,7 +21,7 @@
         </el-form-item>
         <el-form-item>
           <el-button type="primary" @click="handleSearch" :loading="loading">搜索</el-button>
-          <el-button @click="resetForm">重置</el-button>
+          <el-button type="primary" plain @click="resetForm">重置</el-button>
         </el-form-item>
       </el-form>
     </el-card>

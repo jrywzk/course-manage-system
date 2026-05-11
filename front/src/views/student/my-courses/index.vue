@@ -48,10 +48,7 @@
       <template #header>
         <div class="card-header">
           <span>我的课程</span>
-          <el-radio-group v-model="currentTerm" size="small" @change="handleTermChange">
-            <el-radio-button label="2023-1">2023秋季</el-radio-button>
-            <el-radio-button label="2023-2">2024春季</el-radio-button>
-          </el-radio-group>
+          <!-- 学期切换已隐藏 — 数据库暂无学期字段 -->
         </div>
       </template>
 

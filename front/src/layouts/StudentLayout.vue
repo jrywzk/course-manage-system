@@ -1,6 +1,9 @@
 <template>
   <el-container class="layout-container">
     <el-aside width="200px">
+      <div class="sidebar-logo">
+        <AppLogo small />
+      </div>
       <el-menu
         :default-active="activeMenu"
         class="sidebar-menu"
@@ -59,6 +62,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, List, Collection, Document, User } from '@element-plus/icons-vue'
+import AppLogo from '@/components/AppLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -79,10 +83,20 @@ const handleCommand = (command) => {
 <style lang="scss" scoped>
 .layout-container {
   height: 100vh;
+  gap: 8px;
+  padding: 8px 8px 0 0;
+}
+
+.sidebar-logo {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  padding: 18px 0 10px;
+  border-bottom: 1px solid var(--border-color);
 }
 
 .side-menu {
-  height: 100%;
+  height: calc(100% - 90px);
   border-right: 1px solid var(--border-color);
 }
 
@@ -91,7 +105,9 @@ const handleCommand = (command) => {
   justify-content: space-between;
   align-items: center;
   height: 100%;
+  width: 100%;
   padding: 0 20px;
+  box-sizing: border-box;
   border-bottom: 1px solid var(--border-color);
 }
 

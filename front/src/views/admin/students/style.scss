@@ -1,76 +1,29 @@
 .students-container {
   width: 100%;
-  padding: 20px 24px;
+  padding: 20px;
 
   .action-bar {
     display: flex;
-    justify-content: flex-end;
-    margin-bottom: 16px;
+    justify-content: flex-start;
+    align-items: center;
+    margin-bottom: 14px;
   }
 
   .student-list {
     width: 100%;
+    border: 1px solid var(--border-color);
   }
 }
 
-:deep(.el-table) {
-  background-color: transparent;
-  
-  th, td {
-    background-color: transparent;
-    transition: background-color 0.3s ease;
-  }
-  
-  th {
-    background-color: rgba(255, 255, 255, 0.02);
-    color: var(--el-text-color-regular);
-    font-weight: 600;
-    padding: 20px 0;
-    font-size: 16px;
-  }
-  
-  td {
-    color: var(--el-text-color-primary);
-    padding: 24px 0;
-    font-size: 15px;
-  }
-  
-  tr:hover > td {
-    background-color: rgba(255, 255, 255, 0.05) !important;
-  }
-  
-  .el-table__row {
-    transition: transform 0.3s ease;
-    
-    &:hover {
-      transform: translateX(5px);
-    }
-  }
-  
+.students-container, .teachers-container {
   .el-button {
-    font-size: 15px;
-    font-weight: 500;
-    padding: 0;
-    height: auto;
-    margin: 0 15px;
-    transition: all 0.3s ease;
-    
     &.el-button--success {
       color: var(--el-color-success);
-      
-      &:hover {
-        color: var(--el-color-success-light-3);
-        transform: translateY(-2px);
-      }
+      &:hover { color: var(--el-color-success-light-3); }
     }
-    
     &.el-button--danger {
       color: var(--el-color-danger);
-      
-      &:hover {
-        color: var(--el-color-danger-light-3);
-        transform: translateY(-2px);
-      }
+      &:hover { color: var(--el-color-danger-light-3); }
     }
   }
 }

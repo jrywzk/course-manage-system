@@ -4,28 +4,21 @@
   }
   
   .stat-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
     transition: all 0.3s ease;
     
     &:hover {
-      transform: translateY(-5px);
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-      border-color: rgba(255, 255, 255, 0.2);
+      transform: translateY(-3px);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
     
     .stat-content {
-      padding: 20px;
+      padding: 24px 20px;
       text-align: center;
       
       .stat-value {
         font-size: 32px;
         font-weight: bold;
-        background: linear-gradient(45deg, #409EFF, #67C23A);
-        -webkit-background-clip: text;
-        -webkit-text-fill-color: transparent;
-        text-shadow: 0 0 30px rgba(103, 194, 58, 0.2);
+        color: var(--el-color-primary);
         margin-bottom: 5px;
       }
       
@@ -33,7 +26,6 @@
         font-size: 14px;
         color: var(--el-text-color-secondary);
         margin-bottom: 10px;
-        opacity: 0.8;
       }
       
       .stat-trend {
@@ -43,69 +35,24 @@
         align-items: center;
         justify-content: center;
         gap: 5px;
-        transition: all 0.3s ease;
         
         &.up {
           color: var(--el-color-success);
-          .el-icon {
-            transform: translateY(-2px);
-          }
-        }
-        
-        .el-icon {
-          transition: transform 0.3s ease;
         }
       }
       
       .stat-progress {
         margin-top: 10px;
-        
-        :deep(.el-progress-bar__outer) {
-          background-color: rgba(255, 255, 255, 0.1);
-        }
-        
-        :deep(.el-progress-bar__inner) {
-          background: linear-gradient(90deg, #409EFF, #67C23A);
-        }
       }
       
       .stat-desc {
-        font-size: 12px;
+        font-size: 13px;
         color: var(--el-text-color-secondary);
-        opacity: 0.8;
       }
-    }
-  }
-  
-  .chart-card {
-    margin-bottom: 20px;
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-    
-    &:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-    }
-    
-    .chart-container {
-      height: 400px;
-      padding: 20px;
     }
   }
   
   .grade-list {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    transition: all 0.3s ease;
-    
-    &:hover {
-      border-color: rgba(255, 255, 255, 0.2);
-      box-shadow: 0 15px 30px rgba(0, 0, 0, 0.1);
-    }
-    
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -124,22 +71,21 @@
     .grade-excellent {
       color: #67C23A;
       font-weight: bold;
-      text-shadow: 0 0 10px rgba(103, 194, 58, 0.2);
     }
     
     .grade-good {
       color: #409EFF;
-      text-shadow: 0 0 10px rgba(64, 158, 255, 0.2);
+      font-weight: bold;
     }
     
     .grade-pass {
       color: #E6A23C;
-      text-shadow: 0 0 10px rgba(230, 162, 60, 0.2);
+      font-weight: 600;
     }
     
     .grade-fail {
       color: #F56C6C;
-      text-shadow: 0 0 10px rgba(245, 108, 108, 0.2);
+      font-weight: bold;
     }
   }
   
@@ -149,59 +95,4 @@
     justify-content: flex-end;
     padding: 10px 0;
   }
-  
-  :deep(.el-table) {
-    background-color: transparent;
-    
-    th, td {
-      background-color: transparent;
-      transition: background-color 0.3s ease;
-    }
-    
-    th {
-      color: var(--el-text-color-regular);
-      font-weight: 600;
-      background-color: rgba(255, 255, 255, 0.02);
-    }
-    
-    td {
-      color: var(--el-text-color-primary);
-    }
-    
-    tr {
-      &:hover > td {
-        background-color: rgba(255, 255, 255, 0.05) !important;
-      }
-    }
-    
-    .el-table__row {
-      transition: transform 0.3s ease;
-      
-      &:hover {
-        transform: translateX(5px);
-      }
-    }
-  }
-  
-  :deep(.el-select) {
-    .el-input__wrapper {
-      background-color: rgba(255, 255, 255, 0.05);
-      box-shadow: none;
-      border: 1px solid rgba(255, 255, 255, 0.1);
-      
-      &:hover {
-        border-color: rgba(255, 255, 255, 0.2);
-      }
-    }
-  }
-  
-  :deep(.el-button) {
-    &.is-text {
-      color: var(--el-color-primary);
-      
-      &:hover {
-        background-color: rgba(64, 158, 255, 0.1);
-      }
-    }
-  }
-} 
+}
