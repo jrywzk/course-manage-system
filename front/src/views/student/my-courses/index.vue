@@ -48,62 +48,32 @@
       <template #header>
         <div class="card-header">
           <span>我的课程</span>
-          <!-- 学期切换已隐藏 — 数据库暂无学期字段 -->
         </div>
       </template>
 
       <el-table :data="courseList" style="width: 100%">
-        <el-table-column type="expand">
-          <template #default="props">
-            <div class="course-detail">
-              <el-descriptions :column="2" border>
-                <el-descriptions-item label="课程代码">{{ props.row.id }}</el-descriptions-item>
-                <el-descriptions-item label="课程名称">{{ props.row.name }}</el-descriptions-item>
-                <el-descriptions-item label="教学班编号">{{ props.row.sectionCode || '—' }}</el-descriptions-item>
-                <el-descriptions-item label="任课教师">{{ props.row.teacherName }}</el-descriptions-item>
-                <el-descriptions-item label="学分">{{ props.row.credit }}</el-descriptions-item>
-                <el-descriptions-item label="开课学期">{{ props.row.term }}</el-descriptions-item>
-                <!-- TODO: 新版 enrollment 接口后启用 -->
-                <el-descriptions-item label="选课时间">{{ props.row.enrollTime || '—' }}</el-descriptions-item>
-                <el-descriptions-item label="课程状态">
-                  <el-tag :type="props.row.status === 'active' ? 'success' : 'info'">
-                    {{ props.row.status === 'active' ? '进行中' : '未开课' }}
-                  </el-tag>
-                </el-descriptions-item>
-              </el-descriptions>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="name" label="课程名称" min-width="150" />
-        <el-table-column prop="sectionCode" label="教学班编号" min-width="110">
-          <template #default="{ row }">
-            {{ row.sectionCode || '—' }}
-          </template>
-        </el-table-column>
+        <el-table-column prop="courseName" label="课程名称" min-width="150" />
+        <el-table-column prop="sectionCode" label="教学班编号" min-width="120" />
         <el-table-column prop="teacherName" label="任课教师" width="110" />
         <el-table-column prop="credit" label="学分" width="70" align="center" />
-        <el-table-column prop="enrollTime" label="选课时间" min-width="140">
+        <el-table-column prop="semester" label="学期" width="120" />
+        <el-table-column prop="selectTime" label="选课时间" min-width="150" />
+        <el-table-column label="状态" width="80" align="center">
           <template #default="{ row }">
-            {{ row.enrollTime || '—' }}
-          </template>
-        </el-table-column>
-        <el-table-column label="状态" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'" size="small">
-              {{ row.status === 'active' ? '进行中' : '已选' }}
+            <el-tag :type="row._status === 1 ? 'success' : 'info'" size="small">
+              {{ row._status === 1 ? '在读' : '已退课' }}
             </el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" width="100" align="center">
           <template #default="{ row }">
             <el-button
+              v-if="row._status === 1"
               type="danger"
               link
               @click="handleDropCourse(row)"
-              <!-- TODO: 退课传 enrollmentId 或 sectionId -->
-            >
-              退课
-            </el-button>
+            >退课</el-button>
+            <span v-else class="text-placeholder">—</span>
           </template>
         </el-table-column>
       </el-table>
@@ -125,36 +95,34 @@ const stats = reactive({
   weeklyHours: 0
 })
 
-// 课程列表
 const courseList = ref([])
 const loading = ref(false)
-const currentTerm = ref('2023-1')
 
-// 获取课程列表
+// 获取我的课程（直接使用新版 enrollment 接口）
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const studentId = localStorage.getItem('uid')
-    const res = await studentApi.getScoreByStudentId(studentId)
-    
-    if (res.data) {
-      // 获取课程详细信息
-      const coursePromises = res.data.map(score => 
-        studentApi.getCourseById(score.courseId)
-      )
-      const courseResults = await Promise.all(coursePromises)
-      
-      // 合并课程信息和成绩信息
-      courseList.value = courseResults.map((courseRes, index) => ({
-        ...courseRes.data,
-        score: res.data[index].score,
-        status: 'active' // TODO: 根据实际情况设置状态
+    const studentId = localStorage.getItem('studentId')
+    if (!studentId) { ElMessage.error('未获取到学生信息，请重新登录'); return }
+    const res = await studentApi.getMyEnrollments(studentId)
+    if (res && (res.code === 200 || res.status === 200)) {
+      const data = res.data?.list || res.data || []
+      courseList.value = data.map(e => ({
+        enrollmentId: e.enrollmentId,
+        sectionId: e.sectionId,
+        courseName: e.courseName,
+        sectionCode: e.sectionCode,
+        semester: e.semester,
+        credit: e.credit,
+        teacherName: e.teacherName,
+        selectTime: e.selectTime,
+        _status: e.status
       }))
-
-      // 更新统计信息
-      stats.totalCourses = courseList.value.length
-      stats.totalCredits = courseList.value.reduce((sum, course) => sum + course.credit, 0)
-      stats.weeklyHours = courseList.value.length * 2 // 假设每门课每周2学时
+      stats.totalCourses = data.length
+      stats.totalCredits = data.reduce((sum, e) => sum + (e.credit || 0), 0)
+      stats.weeklyHours = data.length * 2
+    } else {
+      ElMessage.warning(res?.msg || res?.message || '获取课程列表失败')
     }
   } catch (error) {
     console.error('获取课程列表失败:', error)
@@ -164,56 +132,24 @@ const fetchCourses = async () => {
   }
 }
 
-// 处理学期切换
-const handleTermChange = (term) => {
-  fetchCourses()
-}
-
-// 处理退课
+// 退课
 const handleDropCourse = async (course) => {
+  if (!course.enrollmentId) { ElMessage.error('缺少选课记录ID'); return }
   try {
-    await ElMessageBox.confirm(
-      `确定要退选课程"${course.name}"吗？`,
-      '退课确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-
-    // ⚠️ 旧链：score/deleteByCourseIdAndStudentIdAndTeacherId
-    // TODO: 新版应改为 enrollment/delete，传 enrollmentId 或 sectionId
-    const studentId = localStorage.getItem('uid')
-    await studentApi.deleteScore(
-      course.id,
-      parseInt(studentId),
-      course.teacherId
-    )
-
-    ElMessage.success(`已退选课程：${course.name}`)
-    fetchCourses() // 刷新课程列表
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('退课失败:', error)
-      ElMessage.error('退课失败，请重试')
+    await ElMessageBox.confirm(`确定要退选"${course.courseName}（${course.sectionCode}）"吗？`, '退课确认', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
+    const res = await studentApi.deleteEnrollment(course.enrollmentId)
+    if (res && (res.code === 200 || res.status === 200)) {
+      ElMessage.success(`已退选：${course.courseName}`)
+      fetchCourses()
+    } else {
+      ElMessage.error(res?.msg || res?.message || '退课失败')
     }
+  } catch (error) {
+    if (error !== 'cancel') { console.error('退课失败:', error); ElMessage.error('退课失败，请重试') }
   }
 }
 
-// 获取成绩样式
-const getScoreClass = (score) => {
-  if (!score) return ''
-  if (score >= 90) return 'score-excellent'
-  if (score >= 80) return 'score-good'
-  if (score >= 60) return 'score-pass'
-  return 'score-fail'
-}
-
-// 初始化
-onMounted(() => {
-  fetchCourses()
-})
+onMounted(() => { fetchCourses() })
 </script>
 
 <style lang="scss" scoped>

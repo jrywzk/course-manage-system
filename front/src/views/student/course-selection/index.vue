@@ -8,7 +8,6 @@
             v-model="filterForm.courseName" 
             placeholder="搜索课程" 
             clearable
-            @keyup.enter="handleSearch"
           />
         </el-form-item>
         <el-form-item label="教师姓名">
@@ -16,7 +15,6 @@
             v-model="filterForm.teacherName" 
             placeholder="搜索教师" 
             clearable
-            @keyup.enter="handleSearch"
           />
         </el-form-item>
         <el-form-item>
@@ -30,70 +28,47 @@
     <el-card class="course-list" v-loading="loading">
       <template #header>
         <div class="list-header">
-          <span>可选课程列表</span>
+          <span>可选教学班列表</span>
           <div class="selection-info">
             已选：{{ selectedCount }}/{{ maxSelection }} 门
-            <el-tooltip content="每学期最多选择6门课程" placement="top">
-              <el-icon class="info-icon"><InfoFilled /></el-icon>
-            </el-tooltip>
           </div>
         </div>
       </template>
 
-      <el-table :data="courseList" style="width: 100%">
-        <el-table-column type="expand">
-          <template #default="props">
-            <div class="course-detail">
-              <p><strong>课程代码：</strong>{{ props.row.id }}</p>
-              <p><strong>课程名称：</strong>{{ props.row.name }}</p>
-              <p><strong>任课教师：</strong>{{ props.row.teacherName }}</p>
-              <p><strong>学分：</strong>{{ props.row.credit }}</p>
-              <p><strong>课程容量：</strong>{{ props.row.studentLimit }}</p>
-              <p><strong>开课学期：</strong>{{ props.row.term }}</p>
-            </div>
-          </template>
-        </el-table-column>
-        <el-table-column prop="id" label="课程代码" width="120" />
-        <el-table-column prop="name" label="课程名称" min-width="150" />
-        <!-- TODO: 新版接 enrollment 后替换为 section_code -->
-        <el-table-column prop="sectionCode" label="教学班编号" min-width="120">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
+      <el-table :data="sectionList" style="width: 100%">
+        <el-table-column prop="courseName" label="课程名称" min-width="140" />
+        <el-table-column prop="sectionCode" label="教学班编号" width="130" />
         <el-table-column prop="teacherName" label="任课教师" width="110" />
         <el-table-column prop="credit" label="学分" width="70" align="center" />
-        <!-- TODO: 新版预留字段 -->
-        <el-table-column prop="semester" label="学期" min-width="110">
-          <template #default>
-            <span class="text-placeholder">—</span>
+        <el-table-column prop="semester" label="学期" width="120" />
+        <el-table-column prop="classroom" label="教室" min-width="120" />
+        <el-table-column label="容纳/已选" width="110" align="center">
+          <template #default="{ row }">
+            <span>{{ row.selectedCount }}/{{ row.capacityLimit }}</span>
           </template>
         </el-table-column>
-        <el-table-column prop="classroom" label="教室" min-width="120">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="容纳/已选" width="100" align="center">
-          <template #default>
-            <span class="text-placeholder">—/—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="status" label="状态" width="80" align="center">
-          <template #default>
-            <el-tag size="small" type="info">待开放</el-tag>
+        <el-table-column label="状态" width="80" align="center">
+          <template #default="{ row }">
+            <el-tag v-if="row.selected" size="small" type="success">已选</el-tag>
+            <el-tag v-else-if="row.remaining <= 0" size="small" type="danger">满员</el-tag>
+            <el-tag v-else size="small" type="info">可选</el-tag>
           </template>
         </el-table-column>
         <el-table-column label="操作" fixed="right" width="120" align="center">
           <template #default="{ row }">
             <el-button
-              :type="row.selected ? 'danger' : 'primary'"
-              :disabled="isSelectionDisabled(row)"
+              v-if="row.selected"
+              type="danger"
               link
-              @click="handleSelection(row)"
-            >
-              {{ row.selected ? '退选' : '选课' }}
-            </el-button>
+              @click="handleDrop(row)"
+            >退选</el-button>
+            <el-button
+              v-else
+              type="primary"
+              :disabled="row.remaining <= 0 || selectedCount >= maxSelection"
+              link
+              @click="handleEnroll(row)"
+            >选课</el-button>
           </template>
         </el-table-column>
       </el-table>
@@ -126,178 +101,121 @@ const filterForm = reactive({
   teacherName: ''
 })
 
-// 分页数据
 const currentPage = ref(1)
 const pageSize = ref(10)
 const total = ref(0)
 const loading = ref(false)
-
-// 选课限制
 const maxSelection = 6
-const selectedCount = computed(() => courseList.value.filter(course => course.selected).length)
 
-// 课程列表
-const courseList = ref([])
+// 教学班列表
+const sectionList = ref([])
+const selectedCount = computed(() => sectionList.value.filter(s => s.selected).length)
 
-// 获取课程列表
-const fetchCourses = async () => {
+// 获取教学班列表
+const fetchSections = async () => {
   try {
     loading.value = true
-    const res = await studentApi.getAllCourses()
-    if (res.status === 200) {
-      courseList.value = res.data
-    } else {
-      ElMessage.warning(res.msg || '获取课程列表失败')
+    const res = await studentApi.getSections({ page: 1, pageSize: 100, status: 1 })
+    if (res && (res.code === 200 || res.status === 200)) {
+      const data = res.data?.list || res.data || []
+      sectionList.value = data.map(s => ({
+        sectionId: s.sectionId,
+        sectionCode: s.sectionCode,
+        semester: s.semester,
+        courseName: s.courseName,
+        teacherName: s.teacherName,
+        credit: s.credit,
+        classroom: (s.building || '') + (s.roomNo ? ' ' + s.roomNo : ''),
+        capacityLimit: s.capacityLimit,
+        selectedCount: s.selectedCount,
+        remaining: s.remaining,
+        selected: false
+      }))
+      total.value = data.length
     }
   } catch (error) {
-    console.error('获取课程列表失败:', error)
-    ElMessage.error('获取课程列表失败')
+    console.error('获取教学班列表失败:', error)
+    ElMessage.error('获取教学班列表失败')
   } finally {
     loading.value = false
   }
 }
 
-// 搜索课程
-const handleSearch = async () => {
+// 获取已选教学班（标记已选状态）
+const fetchMySelected = async () => {
+  const studentId = localStorage.getItem('studentId')
+  if (!studentId) return
   try {
-    loading.value = true
-    let results = []
-    
-    if (filterForm.courseName) {
-      const res = await studentApi.getCourseByName(filterForm.courseName)
-      results = res.data || []
-    } else if (filterForm.teacherName) {
-      const res = await studentApi.getCourseByTeacherName(filterForm.teacherName)
-      results = res.data || []
-    } else {
-      await fetchCourses()
-      return
-    }
-    
-    courseList.value = results.map(course => ({
-      ...course,
-      selected: false
-    }))
-    total.value = results.length
-  } catch (error) {
-    console.error('搜索课程失败:', error)
-    ElMessage.error('搜索课程失败')
-  } finally {
-    loading.value = false
-  }
-}
-
-// 重置表单
-const resetForm = () => {
-  filterForm.courseName = ''
-  filterForm.teacherName = ''
-  fetchCourses()
-}
-
-// 处理分页
-const handleSizeChange = (val) => {
-  pageSize.value = val
-  fetchCourses()
-}
-
-const handleCurrentChange = (val) => {
-  currentPage.value = val
-  fetchCourses()
-}
-
-// 获取容量标签类型
-const getCapacityTagType = (capacity) => {
-  if (capacity > 10) return 'success'
-  if (capacity > 0) return 'warning'
-  return 'danger'
-}
-
-// 判断是否禁用选课按钮
-const isSelectionDisabled = (course) => {
-  if (course.selected) return false
-  if (course.studentLimit === 0) return true
-  if (selectedCount.value >= maxSelection) return true
-  return false
-}
-
-// TODO: 旧 score/insert 入口，等待 C 完成新版 enrollment 接口后替换
-const handleSelection = async (course) => {
-  if (course.selected) {
-    // 退课确认
-    try {
-      await ElMessageBox.confirm(
-        `确定要退选课程"${course.name}"吗？`,
-        '退课确认',
-        {
-          confirmButtonText: '确定',
-          cancelButtonText: '取消',
-          type: 'warning'
-        }
-      )
-
-      // ⚠️ 旧链：score/delete，新版应改为 enrollment/deleteBySectionId
-      const studentId = localStorage.getItem('uid')
-      await studentApi.deleteScore(
-        course.id,
-        parseInt(studentId),
-        course.teacherId
-      )
-
-      course.selected = false
-      course.studentLimit++
-      ElMessage.success(`已退选课程：${course.name}`)
-    } catch (error) {
-      if (error !== 'cancel') {
-        console.error('退课失败:', error)
-        ElMessage.error('退课失败，请重试')
-      }
-    }
-  } else {
-    if (selectedCount.value >= maxSelection) {
-      ElMessage.warning(`每学期最多选择${maxSelection}门课程`)
-      return
-    }
-    
-    try {
-      // ⚠️ 旧链：score/insert，新版应改为 enrollment/insertBySectionId
-      const studentId = localStorage.getItem('uid')
-      await studentApi.addScore(
-        course.id,
-        parseInt(studentId),
-        course.teacherId
-      )
-
-      course.selected = true
-      course.studentLimit--
-      ElMessage.success(`已选课程：${course.name}`)
-    } catch (error) {
-      console.error('选课失败:', error)
-      ElMessage.error('选课失败，请重试')
-    }
-  }
-}
-
-// 获取已选课程
-const fetchSelectedCourses = async () => {
-  try {
-    const studentId = localStorage.getItem('uid')
-    const res = await studentApi.getScoreByStudentId(studentId)
-    
-    // 标记已选课程
-    if (res.data) {
-      const selectedCourseIds = res.data.map(score => score.courseId)
-      courseList.value = courseList.value.map(course => ({
-        ...course,
-        selected: selectedCourseIds.includes(course.id)
+    const res = await studentApi.getMyEnrollments(studentId)
+    if (res && (res.code === 200 || res.status === 200)) {
+      const enrollments = res.data?.list || res.data || []
+      const map = {}
+      enrollments.filter(e => e.status === 1).forEach(e => { map[e.sectionId] = e.enrollmentId })
+      sectionList.value = sectionList.value.map(s => ({
+        ...s, selected: !!map[s.sectionId], enrollmentId: map[s.sectionId] || null
       }))
     }
-  } catch (error) {
-    console.error('获取已选课程失败:', error)
-  }
+  } catch (e) { console.error(e) }
 }
 
-// 初始化
-onMounted(() => {
-  fetchCourses()
-})
+// 选课
+const handleEnroll = async (section) => {
+  if (selectedCount.value >= maxSelection) { ElMessage.warning(`每学期最多选择${maxSelection}门课程`); return }
+  const studentId = localStorage.getItem('studentId')
+  if (!studentId) { ElMessage.error('未获取到学生信息，请重新登录'); return }
+  try {
+    const res = await studentApi.createEnrollment(Number(studentId), section.sectionId)
+    if (res && (res.code === 200 || res.status === 200) && res.data?.result === 1) {
+      section.selected = true; section.enrollmentId = res.data.enrollmentId
+      section.selectedCount++; section.remaining--
+      ElMessage.success(`已选：${section.courseName}（${section.sectionCode}）`)
+    } else if (res.data?.result === 2) { ElMessage.warning('已选过该课程，不可重复选') }
+    else if (res.data?.result === 0) { ElMessage.warning('容量已满') }
+    else { ElMessage.error(res?.msg || res?.message || '选课失败') }
+  } catch (e) { console.error(e); ElMessage.error('选课失败') }
+}
+
+// 退课
+const handleDrop = async (section) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要退选"${section.courseName}（${section.sectionCode}）"吗？`,
+      '退课确认', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
+    )
+    if (!section.enrollmentId) { ElMessage.error('缺少选课记录ID'); return }
+    const res = await studentApi.deleteEnrollment(section.enrollmentId)
+    if (res && (res.code === 200 || res.status === 200)) {
+      section.selected = false; section.enrollmentId = null
+      section.selectedCount--; section.remaining++
+      ElMessage.success(`已退选：${section.courseName}`)
+    } else { ElMessage.error(res?.msg || res?.message || '退课失败') }
+  } catch (e) { if (e !== 'cancel') { console.error(e); ElMessage.error('退课失败') } }
+}
+
+// 搜索
+const handleSearch = async () => {
+  if (!filterForm.courseName && !filterForm.teacherName) { await fetchSections(); await fetchMySelected(); return }
+  loading.value = true
+  try {
+    const res = await studentApi.getSections({ page: 1, pageSize: 200 })
+    let data = res.data?.list || res.data || []
+    if (filterForm.courseName) data = data.filter(s => (s.courseName || '').includes(filterForm.courseName))
+    if (filterForm.teacherName) data = data.filter(s => (s.teacherName || '').includes(filterForm.teacherName))
+    sectionList.value = data.map(s => ({
+      sectionId: s.sectionId, sectionCode: s.sectionCode, semester: s.semester,
+      courseName: s.courseName, teacherName: s.teacherName, credit: s.credit,
+      classroom: (s.building || '') + (s.roomNo ? ' ' + s.roomNo : ''),
+      capacityLimit: s.capacityLimit, selectedCount: s.selectedCount,
+      remaining: s.remaining, selected: false, enrollmentId: null
+    }))
+    total.value = data.length
+  } finally { loading.value = false }
+  await fetchMySelected()
+}
+
+const resetForm = () => { filterForm.courseName = ''; filterForm.teacherName = ''; handleSearch() }
+const handleSizeChange = () => fetchSections()
+const handleCurrentChange = () => fetchSections()
+
+onMounted(async () => { await fetchSections(); await fetchMySelected() })
 </script> 

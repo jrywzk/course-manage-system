@@ -53,10 +53,10 @@
       </el-form>
       
       <div class="demo-info">
-        <p class="demo-title">演示账号</p>
-        <p>管理员：账号 1，密码 123</p>
-        <p>教师：账号 2，密码 123</p>
-        <p>学生：账号 3，密码 123</p>
+        <p class="demo-title">演示账号（密码均为 123456）</p>
+        <p>管理员：admin01</p>
+        <p>教师：tch001 ~ tch004</p>
+        <p>学生：stu001 ~ stu008</p>
       </div>
     </el-card>
   </div>
@@ -76,14 +76,13 @@ const loginFormRef = ref(null)
 const loading = ref(false)
 
 const loginForm = reactive({
-  username: '1',
-  password: '123'
+  username: 'stu001',
+  password: '123456'
 })
 
 const rules = {
   username: [
-    { required: true, message: '请输入学号/工号', trigger: 'blur' },
-    { type: 'number', message: '必须为数字', transform: (value) => Number(value) }
+    { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
@@ -115,18 +114,24 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
     loading.value = true
     
-    const response = await http.post('/api/user/login', null, {
-      params: {
-        id: parseInt(loginForm.username),
-        password: loginForm.password
-      }
+    const res = await http.post('/api/auth/login', {
+      username: loginForm.username,
+      password: loginForm.password
     })
-
-    if (response.status === 200) {
-      localStorage.setItem('uid', loginForm.username)
-      const role = response.data
+    
+    if (res && (res.code === 200 || res.status === 200) && res.data?.token) {
+      const { token, role, userId, realName, entityId } = res.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('uid', userId)
+      localStorage.setItem('username', loginForm.username)
+      localStorage.setItem('realName', realName || '')
       localStorage.setItem('role', role)
-      
+
+      // 保存学生端 entityId = studentId
+      if (role === 'student' && entityId) {
+        localStorage.setItem('studentId', entityId)
+      }
+
       const routes = {
         student: '/student/dashboard',
         teacher: '/teacher/dashboard',
@@ -142,11 +147,15 @@ const handleLogin = async () => {
         localStorage.removeItem('role')
       }
     } else {
-      ElMessage.error('登录失败：账号或密码错误')
+      ElMessage.error(res?.msg || res?.message || '登录失败')
     }
   } catch (error) {
     console.error('Login error:', error)
-    ElMessage.error('登录失败，请检查账号和密码是否正确')
+    const errMsg = error?.response?.data?.message || error?.message || ''
+    ElMessage.error(
+      errMsg.includes('Network Error') ? '无法连接到服务器，请检查后端是否启动' :
+      errMsg || '登录失败，请检查账号和密码是否正确'
+    )
   } finally {
     loading.value = false
   }

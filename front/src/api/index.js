@@ -63,6 +63,9 @@ class ReuqestHttp {
     post(url, data, headers) {
         return this.service.post(url, data, headers)
     }
+    delete(url, headers) {
+        return this.service.delete(url, headers)
+    }
     // download .etc you can add more methods here
 }
 export default new ReuqestHttp(config);

@@ -98,6 +98,56 @@ export const studentApi = {
   },
 
   // 选课（添加成绩记录）
+
+  // ======== 新版业务链 API（C 已上线） ========
+
+  /**
+   * 获取教学班列表（学生选课页主数据源）
+   * GET /api/sections?page=&pageSize=&status=
+   */
+  getSections(params = {}) {
+    return http.get('/api/sections', params)
+  },
+
+  /**
+   * 学生选课
+   * POST /api/enrollments
+   * body: { studentId, sectionId, source: '自主选课' }
+   */
+  createEnrollment(studentId, sectionId) {
+    return http.post('/api/enrollments', {
+      studentId,
+      sectionId,
+      source: '自主选课'
+    })
+  },
+
+  /**
+   * 学生退课
+   * DELETE /api/enrollments/{enrollmentId}
+   */
+  deleteEnrollment(enrollmentId) {
+    return http.delete(`/api/enrollments/${enrollmentId}`)
+  },
+
+  /**
+   * 获取学生已选教学班列表（我的课程页主数据源）
+   * GET /api/students/{studentId}/enrollments?status=1
+   */
+  getMyEnrollments(studentId) {
+    return http.get(`/api/students/${studentId}/enrollments`, { status: 1 })
+  },
+
+  // （以下旧版 API 保留，仅用于教师端、管理员端等暂未迁移的页面）
+
+  addScore(courseId, studentId, teacherId) {
+    return http.post('/api/score/insert', {
+      courseId,
+      studentId,
+      teacherId,
+      score: 0
+    })
+  },
   addScore(courseId, studentId, teacherId) {
     return http.post('/api/score/insert', {
       courseId,
