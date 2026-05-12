@@ -22,4 +22,6 @@ public interface AdminMapper {
     @Select("select * from t_admin")
     public List<Admin> selectAll();
 
+    @Select("select admin_name from t_admin where user_id = #{userId}")
+    String selectNameByUserId(@Param("userId") Integer userId);
 }

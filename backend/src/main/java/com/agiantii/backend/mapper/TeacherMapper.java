@@ -28,4 +28,7 @@ public interface TeacherMapper {
 
     @Select("select * from t_teacher")
     public List<Teacher> selectAll();
+
+    @Select("select teacher_name from t_teacher where user_id = #{userId}")
+    String selectNameByUserId(@Param("userId") Integer userId);
 }
