@@ -27,15 +27,19 @@ public class ScoreV2Controller {
     @Resource
     private com.agiantii.backend.mapper.EnrollmentMapper enrollmentMapper;
 
+    @Resource
+    private com.agiantii.backend.mapper.TeacherMapper teacherMapper;
+
     @PostMapping("/scores")
     @ApiOperation("录入/修改成绩（依附 enrollment）")
     public R<Map<String, Object>> grade(@RequestBody Map<String, Object> body) {
         Integer enrollmentId = (Integer) body.get("enrollmentId");
+        Integer teacherId = (Integer) body.get("teacherId");
         Object usualObj = body.get("usualScore");
         Object examObj = body.get("examScore");
 
-        if (enrollmentId == null || usualObj == null || examObj == null) {
-            return R.error("enrollmentId、usualScore、examScore不能为空");
+        if (enrollmentId == null || teacherId == null || usualObj == null || examObj == null) {
+            return R.error("enrollmentId、teacherId、usualScore、examScore不能为空");
         }
 
         BigDecimal usualScore = new BigDecimal(usualObj.toString());
@@ -50,7 +54,19 @@ public class ScoreV2Controller {
             return R.error("选课记录不存在", 404);
         }
 
-        log.info("POST /scores: enrollmentId={}, usualScore={}, examScore={}", enrollmentId, usualScore, examScore);
+        // 校验该 enrollment 是否属于当前教师的教学班
+        Integer matchedSectionId = enrollmentMapper.findSectionIdByEnrollmentAndTeacher(enrollmentId, teacherId);
+        if (matchedSectionId == null) {
+            return R.error("该选课记录不属于您的教学班", 403);
+        }
+
+        // 获取教师姓名作为 gradedBy
+        String teacherName = teacherMapper.selectNameByTeacherId(teacherId);
+        if (teacherName == null) {
+            teacherName = "未知教师";
+        }
+
+        log.info("POST /scores: enrollmentId={}, teacherId={}, usualScore={}, examScore={}", enrollmentId, teacherId, usualScore, examScore);
 
         try {
             BigDecimal finalScore = usualScore.multiply(new BigDecimal("0.3"))
@@ -67,7 +83,7 @@ public class ScoreV2Controller {
             score.setFinalScore(finalScore);
             score.setGpaPoint(gpaPoint);
             score.setIsPassed(isPassed);
-            score.setGradedBy("teacher");
+            score.setGradedBy(teacherName);
 
             ScoreV2 existing = v2ScoreMapper.selectByEnrollmentId(enrollmentId);
             if (existing != null) {

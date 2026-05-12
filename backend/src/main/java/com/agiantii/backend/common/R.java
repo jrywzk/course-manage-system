@@ -43,6 +43,13 @@ public class R<T> {
         r.status = code;
         return r;
     }
+    public static <T> R<T> error(T data, String msg) {
+        R<T> r = new R<T>();
+        r.data = data;
+        r.msg = msg;
+        r.status = 400;
+        return r;
+    }
 
     public R<T> add(String key, Object value) {
         this.map.put(key, value);

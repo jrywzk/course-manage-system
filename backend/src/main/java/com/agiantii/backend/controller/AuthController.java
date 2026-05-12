@@ -67,12 +67,15 @@ public class AuthController {
         switch (user.getRole()) {
             case "student":
                 realName = studentMapper.selectNameByUserId(user.getId());
+                entityId = studentMapper.selectIdByUserId(user.getId());
                 break;
             case "teacher":
                 realName = teacherMapper.selectNameByUserId(user.getId());
+                entityId = teacherMapper.selectIdByUserId(user.getId());
                 break;
             case "admin":
                 realName = adminMapper.selectNameByUserId(user.getId());
+                entityId = adminMapper.selectIdByUserId(user.getId());
                 break;
         }
 
@@ -83,6 +86,7 @@ public class AuthController {
         tokenInfo.put("username", user.getUsername());
         tokenInfo.put("role", user.getRole());
         tokenInfo.put("realName", realName);
+        tokenInfo.put("entityId", entityId);
         tokenStore.put(token, tokenInfo);
 
         Map<String, Object> data = new HashMap<>();
@@ -92,6 +96,8 @@ public class AuthController {
         data.put("username", user.getUsername());
         data.put("realName", realName);
         data.put("entityId", entityId);
+        // 同时提供角色特定字段方便前端对接
+        data.put(user.getRole() + "Id", entityId);
 
         log.info("login success: username={}, role={}", username, user.getRole());
         return R.success(data, "登录成功");

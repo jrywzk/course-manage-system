@@ -19,7 +19,8 @@ public class LoginController {
 
     @Resource
     private UserMapper userMapper;
-    @PostMapping("/login")
+    // 【已废弃】旧版登录接口，现已迁移到 AuthController，此端点已下线
+    // @PostMapping("/login")
     public R<String> login(@RequestParam(value = "id",required = true) Integer id, @RequestParam(value = "password" ,required = true) String password) {
             log.info("login id:{},password:{}",id,password);
             User user = userMapper.selectUserByIdAndPassword(id,password);

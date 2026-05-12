@@ -31,4 +31,10 @@ public interface TeacherMapper {
 
     @Select("select teacher_name from t_teacher where user_id = #{userId}")
     String selectNameByUserId(@Param("userId") Integer userId);
+
+    @Select("select teacher_id from t_teacher where user_id = #{userId}")
+    Integer selectIdByUserId(@Param("userId") Integer userId);
+
+    @Select("select teacher_name from t_teacher where teacher_id = #{teacherId}")
+    String selectNameByTeacherId(@Param("teacherId") Integer teacherId);
 }

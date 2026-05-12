@@ -27,4 +27,7 @@ public interface StudentMapper {
 
     @Select("select student_name from t_student where user_id = #{userId}")
     String selectNameByUserId(@Param("userId") Integer userId);
+
+    @Select("select student_id from t_student where user_id = #{userId}")
+    Integer selectIdByUserId(@Param("userId") Integer userId);
 }

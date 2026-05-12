@@ -54,14 +54,14 @@ public class EnrollmentController {
             Map<String, Object> data = new HashMap<>();
             data.put("result", 2);
             data.put("enrollmentId", existing.getEnrollmentId());
-            return R.error("已选过该课程");
+            return R.error(data, "已选过该课程");
         }
 
         // 检查容量
         if (section.getCapacityLimit() > 0 && section.getSelectedCount() >= section.getCapacityLimit()) {
             Map<String, Object> data = new HashMap<>();
             data.put("result", 0);
-            return R.error("容量已满");
+            return R.error(data, "容量已满");
         }
 
         try {
@@ -90,7 +90,7 @@ public class EnrollmentController {
             log.error("enroll error: {}", e.getMessage(), e);
             Map<String, Object> data = new HashMap<>();
             data.put("result", -1);
-            return R.error("系统错误", 500);
+            return R.error(data, "系统错误");
         }
     }
 
@@ -104,7 +104,7 @@ public class EnrollmentController {
         if (enrollment == null || enrollment.getStatus() == 0) {
             Map<String, Object> data = new HashMap<>();
             data.put("result", 0);
-            return R.error("记录不存在或已退课");
+            return R.error(data, "记录不存在或已退课");
         }
 
         try {
@@ -115,13 +115,13 @@ public class EnrollmentController {
             if (updated > 0) {
                 return R.success(data, "退课成功");
             } else {
-                return R.error("退课失败");
+                return R.error(data, "退课失败");
             }
         } catch (Exception e) {
             log.error("drop error: {}", e.getMessage(), e);
             Map<String, Object> data = new HashMap<>();
             data.put("result", -1);
-            return R.error("系统错误", 500);
+            return R.error(data, "系统错误");
         }
     }
 

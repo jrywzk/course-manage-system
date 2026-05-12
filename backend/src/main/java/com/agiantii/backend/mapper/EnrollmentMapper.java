@@ -66,4 +66,10 @@ public interface EnrollmentMapper {
             "WHERE e.section_id = #{sectionId} AND e.status = 1 " +
             "ORDER BY st.student_no")
     List<Map<String, Object>> selectSectionStudents(@Param("sectionId") Integer sectionId);
+
+    @Select("SELECT e.section_id FROM t_enrollment e " +
+            "JOIN t_course_section cs ON e.section_id = cs.section_id " +
+            "WHERE e.enrollment_id = #{enrollmentId} AND cs.teacher_id = #{teacherId}")
+    Integer findSectionIdByEnrollmentAndTeacher(@Param("enrollmentId") Integer enrollmentId,
+                                                 @Param("teacherId") Integer teacherId);
 }

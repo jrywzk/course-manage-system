@@ -31,7 +31,8 @@ public class ScoreController {
     // ================================================================
     @Resource
     private CourseMapper courseMapper;
-  @PostMapping("insert")
+  // 【已废弃】旧版选课入口，现已迁移到 EnrollmentController，此端点已下线
+  // @PostMapping("insert")
     public R<String> insertScore(@RequestBody Score score) {
         log.info("insert course : {}",score);
         try{
@@ -58,7 +59,8 @@ public class ScoreController {
     //         新版架构中，退课逻辑迁移到 EnrollmentController.delete。
     //         此方法保留在此仅供对照，实际调用应走 EnrollmentController。
     // ================================================================
-    @GetMapping("deleteByCourseIdAndStudentIdAndTeacherId")
+    // 【已废弃】旧版退课入口，现已迁移到 EnrollmentController，此端点已下线
+    // @GetMapping("deleteByCourseIdAndStudentIdAndTeacherId")
     // 【改动】三个参数都缺少 @RequestParam，Spring MVC 可能无法正确绑定
     // 原来：Integer courseId,Integer studentId,Integer teacherId
     // 改成：@RequestParam("courseId") Integer courseId,

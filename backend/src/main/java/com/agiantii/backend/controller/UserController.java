@@ -21,7 +21,8 @@ public class UserController {
 //    private static final Logger log = LoggerFactory.getLogger(UserController.class);
     @Resource
     private UserMapper userMapper;
-    @PostMapping("/login")
+    // 【已废弃】旧版用户登录，现已迁移到 AuthController，此端点已下线
+    // @PostMapping("/login")
     public R<String> login(Integer id,String password) {
         log.info("user login id:{},password:{}",id,password);
         User user = userMapper.selectUserByIdAndPassword(id,password);
