@@ -33,7 +33,7 @@ public interface V2ScoreMapper {
             "graded_at = NOW(), graded_by = #{gradedBy} WHERE enrollment_id = #{enrollmentId}")
     void updateByEnrollmentId(ScoreV2 score);
 
-    @Select("SELECT s.score_id, s.enrollment_id, st.student_no AS studentNo, st.student_name AS studentName, " +
+    @Select("SELECT s.score_id AS scoreId, s.enrollment_id AS enrollmentId, st.student_no AS studentNo, st.student_name AS studentName, " +
             "s.usual_score AS usualScore, s.exam_score AS examScore, " +
             "s.final_score AS finalScore, s.is_passed AS isPassed, " +
             "DATE_FORMAT(s.graded_at, '%Y-%m-%d %H:%i:%s') AS gradedAt " +

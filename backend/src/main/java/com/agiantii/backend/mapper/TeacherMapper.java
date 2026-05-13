@@ -9,24 +9,23 @@ import java.util.List;
 @Mapper
 public interface TeacherMapper {
 
-    @Insert("insert into t_teacher(id,name) values (#{id},#{name})")
+    @Insert("insert into t_teacher(teacher_id, teacher_name) values (#{teacherId}, #{teacherName})")
     public void insert(Teacher teacher);
 
 
-    @Delete("delete from t_teacher where id = #{id}")
-    public void delete(Integer id);
+    @Delete("delete from t_teacher where teacher_id = #{teacherId}")
+    public void delete(Integer teacherId);
 
-    @Update("update t_teacher set name = #{name} where id = #{id}")
+    @Update("update t_teacher set teacher_name = #{teacherName} where teacher_id = #{teacherId}")
     public void update(Teacher teacher);
 
-    @Select("select * from t_teacher where id = #{id}")
-    public Teacher selectByTeacherId(Integer id);
+    @Select("select teacher_id, teacher_name from t_teacher where teacher_id = #{teacherId}")
+    public Teacher selectByTeacherId(Integer teacherId);
 
-    @Select("select * from t_teacher where name like concat ('%',#{name},'%')")
+    @Select("select teacher_id, teacher_name from t_teacher where teacher_name like concat ('%',#{name},'%')")
     public List<Teacher> selectByTeacherName(@Param("name") String name);
-    // with fuzzy default search
 
-    @Select("select * from t_teacher")
+    @Select("select teacher_id, teacher_name from t_teacher")
     public List<Teacher> selectAll();
 
     @Select("select teacher_name from t_teacher where user_id = #{userId}")

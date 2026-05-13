@@ -1,6 +1,7 @@
 package com.agiantii.backend.controller;
 
 import com.agiantii.backend.common.R;
+import com.agiantii.backend.common.TokenStore;
 import com.agiantii.backend.mapper.AdminMapper;
 import com.agiantii.backend.mapper.StudentMapper;
 import com.agiantii.backend.mapper.TeacherMapper;
@@ -16,7 +17,6 @@ import javax.annotation.Resource;
 import java.util.HashMap;
 import java.util.Map;
 import java.util.UUID;
-import java.util.concurrent.ConcurrentHashMap;
 
 @Slf4j
 @RestController
@@ -36,8 +36,8 @@ public class AuthController {
     @Resource
     private AdminMapper adminMapper;
 
-    // 简易Token存储（生产环境应使用Redis）
-    private static final ConcurrentHashMap<String, Map<String, Object>> tokenStore = new ConcurrentHashMap<>();
+    @Resource
+    private TokenStore tokenStore;
 
     @PostMapping("/login")
     @ApiOperation("用户登录（统一入口）")
@@ -107,18 +107,12 @@ public class AuthController {
     @ApiOperation("获取当前用户信息")
     @ApiImplicitParam(name = "Authorization", value = "Bearer {token}", required = true, dataType = "string", paramType = "header")
     public R<Map<String, Object>> getUserInfo(@RequestHeader(value = "Authorization", required = false) String authHeader) {
-        if (authHeader == null || !authHeader.startsWith("Bearer ")) {
-            return R.error("未登录", 401);
-        }
-
-        String token = authHeader.substring(7);
-        Map<String, Object> tokenInfo = tokenStore.get(token);
+        Map<String, Object> tokenInfo = tokenStore.resolve(authHeader);
         if (tokenInfo == null) {
-            return R.error("Token无效或已过期", 401);
+            return R.error("未登录或Token无效", 401);
         }
 
         Integer userId = (Integer) tokenInfo.get("userId");
-        String role = (String) tokenInfo.get("role");
         User user = userMapper.selectUserById(userId);
 
         if (user == null) {

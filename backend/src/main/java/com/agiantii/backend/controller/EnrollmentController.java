@@ -1,6 +1,7 @@
 package com.agiantii.backend.controller;
 
 import com.agiantii.backend.common.R;
+import com.agiantii.backend.common.TokenStore;
 import com.agiantii.backend.mapper.CourseSectionMapper;
 import com.agiantii.backend.mapper.EnrollmentMapper;
 import com.agiantii.backend.pojo.Enrollment;
@@ -28,6 +29,9 @@ public class EnrollmentController {
 
     @Resource
     private CourseSectionMapper courseSectionMapper;
+
+    @Resource
+    private TokenStore tokenStore;
 
     @PostMapping("/enrollments")
     @ApiOperation("学生选课")
@@ -145,10 +149,18 @@ public class EnrollmentController {
     @ApiOperation("教师查看自己授课的教学班列表")
     @ApiImplicitParams({
             @ApiImplicitParam(name = "teacherId", value = "教师ID", required = true, paramType = "path"),
-            @ApiImplicitParam(name = "semester", value = "学期 如2025-2026-1", paramType = "query")
+            @ApiImplicitParam(name = "Authorization", value = "Bearer {token}", required = true, dataType = "string", paramType = "header")
     })
-    public R<List<CourseSectionVo>> teacherSections(@PathVariable Integer teacherId) {
-        log.info("GET /teachers/{}/sections", teacherId);
+    public R<List<CourseSectionVo>> teacherSections(
+            @PathVariable Integer teacherId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Token 身份校验：当前登录教师 entityId 必须与路径 teacherId 一致
+        Map<String, Object> tokenInfo = tokenStore.validateOwner(authHeader, teacherId);
+        if (tokenInfo == null) {
+            return R.error("未登录或无权查看该教师的教学班", 401);
+        }
+
+        log.info("GET /teachers/{}/sections: authenticated teacherId={}", teacherId);
         List<CourseSectionVo> list = courseSectionMapper.selectByTeacherId(teacherId);
         return R.success(list, "成功");
     }

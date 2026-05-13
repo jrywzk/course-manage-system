@@ -1,10 +1,12 @@
 package com.agiantii.backend.controller;
 
 import com.agiantii.backend.common.R;
+import com.agiantii.backend.common.TokenStore;
 import com.agiantii.backend.mapper.V2ScoreMapper;
 import com.agiantii.backend.pojo.ScoreV2;
 import io.swagger.annotations.Api;
 import io.swagger.annotations.ApiImplicitParam;
+import io.swagger.annotations.ApiImplicitParams;
 import io.swagger.annotations.ApiOperation;
 import lombok.extern.slf4j.Slf4j;
 import org.springframework.web.bind.annotation.*;
@@ -33,9 +35,14 @@ public class ScoreV2Controller {
     @Resource
     private com.agiantii.backend.mapper.CourseSectionMapper courseSectionMapper;
 
+    @Resource
+    private TokenStore tokenStore;
+
     @PostMapping("/scores")
     @ApiOperation("录入/修改成绩（依附 enrollment）")
-    public R<Map<String, Object>> grade(@RequestBody Map<String, Object> body) {
+    public R<Map<String, Object>> grade(
+            @RequestBody Map<String, Object> body,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
         Integer enrollmentId = (Integer) body.get("enrollmentId");
         Integer teacherId = (Integer) body.get("teacherId");
         Object usualObj = body.get("usualScore");
@@ -43,6 +50,12 @@ public class ScoreV2Controller {
 
         if (enrollmentId == null || teacherId == null || usualObj == null || examObj == null) {
             return R.error("enrollmentId、teacherId、usualScore、examScore不能为空", 400);
+        }
+
+        // Token 身份校验：当前登录教师 entityId 必须与请求中的 teacherId 一致
+        Map<String, Object> tokenInfo = tokenStore.validateOwner(authHeader, teacherId);
+        if (tokenInfo == null) {
+            return R.error("未登录或无权操作", 401);
         }
 
         BigDecimal usualScore = new BigDecimal(usualObj.toString());
@@ -115,21 +128,31 @@ public class ScoreV2Controller {
     }
 
     @GetMapping("/sections/{sectionId}/scores")
-    @ApiOperation("教学班成绩汇总")
-    @ApiImplicitParam(name = "sectionId", value = "教学班ID", required = true, paramType = "path")
-    public R<Map<String, Object>> sectionScores(@PathVariable Integer sectionId,
-                                                 @RequestParam(required = false) Integer teacherId) {
-        log.info("GET /sections/{}/scores: teacherId={}", sectionId, teacherId);
+    @ApiOperation("教学班成绩汇总（教师查看自己教学班的成绩）")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "sectionId", value = "教学班ID", required = true, paramType = "path"),
+            @ApiImplicitParam(name = "teacherId", value = "教师ID（必填，校验是否属于该教师）", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "Authorization", value = "Bearer {token}", required = true, dataType = "string", paramType = "header")
+    })
+    public R<Map<String, Object>> sectionScores(
+            @PathVariable Integer sectionId,
+            @RequestParam Integer teacherId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Token 身份校验：当前登录教师 entityId 必须与查询参数 teacherId 一致
+        Map<String, Object> tokenInfo = tokenStore.validateOwner(authHeader, teacherId);
+        if (tokenInfo == null) {
+            return R.error("未登录或无权查看该教学班的成绩", 401);
+        }
 
-        // 校验教学班是否存在且属于该教师
-        if (teacherId != null) {
-            Integer actualTeacherId = courseSectionMapper.selectTeacherIdBySectionId(sectionId);
-            if (actualTeacherId == null) {
-                return R.error("教学班不存在", 404);
-            }
-            if (!actualTeacherId.equals(teacherId)) {
-                return R.error("该教学班不属于您", 403);
-            }
+        log.info("GET /sections/{}/scores: authenticated teacherId={}", sectionId, teacherId);
+
+        // teacherId 必填，必须校验教学班是否存在且属于该教师
+        Integer actualTeacherId = courseSectionMapper.selectTeacherIdBySectionId(sectionId);
+        if (actualTeacherId == null) {
+            return R.error("教学班不存在", 404);
+        }
+        if (!actualTeacherId.equals(teacherId)) {
+            return R.error("该教学班不属于您", 403);
         }
 
         // 获取教学班基本信息

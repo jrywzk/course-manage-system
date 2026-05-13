@@ -1,6 +1,7 @@
 package com.agiantii.backend.controller;
 
 import com.agiantii.backend.common.R;
+import com.agiantii.backend.common.TokenStore;
 import com.agiantii.backend.mapper.CourseSectionMapper;
 import com.agiantii.backend.pojo.vo.CourseSectionVo;
 import io.swagger.annotations.Api;
@@ -26,6 +27,9 @@ public class CourseSectionController {
 
     @Resource
     private com.agiantii.backend.mapper.EnrollmentMapper enrollmentMapper;
+
+    @Resource
+    private TokenStore tokenStore;
 
     @GetMapping
     @ApiOperation("教学班列表（学生浏览可选课程）")
@@ -75,14 +79,37 @@ public class CourseSectionController {
     }
 
     @GetMapping("/{sectionId}/students")
-    @ApiOperation("教学班学生名单")
-    @ApiImplicitParam(name = "sectionId", value = "教学班ID", required = true, paramType = "path")
-    public R<List<Map<String, Object>>> sectionStudents(@PathVariable Integer sectionId) {
-        log.info("GET /sections/{}/students", sectionId);
+    @ApiOperation("教学班学生名单（教师查看自己教学班的学生）")
+    @ApiImplicitParams({
+            @ApiImplicitParam(name = "sectionId", value = "教学班ID", required = true, paramType = "path"),
+            @ApiImplicitParam(name = "teacherId", value = "教师ID（必填，校验该教学班是否属于该教师）", required = true, paramType = "query"),
+            @ApiImplicitParam(name = "Authorization", value = "Bearer {token}", required = true, dataType = "string", paramType = "header")
+    })
+    public R<List<Map<String, Object>>> sectionStudents(
+            @PathVariable Integer sectionId,
+            @RequestParam Integer teacherId,
+            @RequestHeader(value = "Authorization", required = false) String authHeader) {
+        // Token 身份校验：当前登录教师 entityId 必须与查询参数 teacherId 一致
+        Map<String, Object> tokenInfo = tokenStore.validateOwner(authHeader, teacherId);
+        if (tokenInfo == null) {
+            return R.error("未登录或无权查看该教学班的学生名单", 401);
+        }
 
+        log.info("GET /sections/{}/students: authenticated teacherId={}", sectionId, teacherId);
+
+        // 校验教学班是否存在
         CourseSectionVo section = courseSectionMapper.selectSectionDetail(sectionId);
         if (section == null) {
             return R.error("教学班不存在", 404);
+        }
+
+        // 必须校验教师是否拥有该教学班
+        Integer actualTeacherId = courseSectionMapper.selectTeacherIdBySectionId(sectionId);
+        if (actualTeacherId == null) {
+            return R.error("教学班不存在", 404);
+        }
+        if (!actualTeacherId.equals(teacherId)) {
+            return R.error("该教学班不属于您", 403);
         }
 
         List<Map<String, Object>> students = enrollmentMapper.selectSectionStudents(sectionId);

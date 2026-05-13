@@ -85,13 +85,13 @@ public class StudentController {
     @PostMapping("register")
     R<String> addStudent(@RequestBody Student student,@RequestParam(value = "password",defaultValue = "123") String password){
         log.info("添加学生中 {} Password {}", student, password);
-        if(userMapper.selectUserById(student.getId())!= null){
+        if(userMapper.selectUserById(student.getStudentId())!= null){
             return R.error("该学生已注册");
         }
         try{
             User user = new User();
             user.setPassword(password);
-            user.setId(student.getId());
+            user.setId(student.getStudentId());
             user.setRole(Constant.ROLE_STUDENT);
             userMapper.insertUser(user);
             studentMapper.insertStudent(student);
