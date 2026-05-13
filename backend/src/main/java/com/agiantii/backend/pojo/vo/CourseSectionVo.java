@@ -63,6 +63,9 @@ public class CourseSectionVo {
     @ApiModelProperty("剩余名额")
     private Integer remaining;
 
+    @ApiModelProperty("实际选课人数（实时统计）")
+    private Integer enrolledCount;
+
     @ApiModelProperty("状态 1=开课 0=停开")
     private Integer status;
 }

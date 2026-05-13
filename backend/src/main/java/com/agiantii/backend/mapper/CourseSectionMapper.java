@@ -53,4 +53,7 @@ public interface CourseSectionMapper {
             "WHERE cs.teacher_id = #{teacherId} AND cs.status = 1 " +
             "ORDER BY cs.semester DESC, cs.section_id")
     List<CourseSectionVo> selectByTeacherId(@Param("teacherId") Integer teacherId);
+
+    @Select("SELECT teacher_id FROM t_course_section WHERE section_id = #{sectionId}")
+    Integer selectTeacherIdBySectionId(@Param("sectionId") Integer sectionId);
 }

@@ -37,7 +37,7 @@ public class EnrollmentController {
         String source = (String) body.getOrDefault("source", "自主选课");
 
         if (studentId == null || sectionId == null) {
-            return R.error("studentId和sectionId不能为空");
+            return R.error("studentId和sectionId不能为空", 400);
         }
 
         log.info("POST /enrollments: studentId={}, sectionId={}, source={}", studentId, sectionId, source);

@@ -14,7 +14,8 @@ import javax.annotation.Resource;
 import java.util.logging.Logger;
 
 @Slf4j
-@RestController
+// 【已废弃】旧版控制器，已从 Spring 容器移除，所有接口迁移到 AuthController
+// @RestController
 public class LoginController {
 
     @Resource

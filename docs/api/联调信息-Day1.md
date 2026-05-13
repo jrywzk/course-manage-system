@@ -1,6 +1,6 @@
-# 组员C → 组员D 联调信息 — Day 1（修复版 2026-05-12）
+# 组员C → 组员D 联调信息 — Day 2 教师主链（2026-05-13）
 
-## 一、当前可调用接口列表（正式口径）
+## 一、当前可调用接口列表（正式口径，9090 doc.html 仅有这 11 个）
 
 | 序号 | 方法 | 路径 | 说明 | 状态 |
 |------|------|------|------|------|
@@ -11,40 +11,38 @@
 | 5 | POST | /api/enrollments | 学生选课 | 已验证 |
 | 6 | DELETE | /api/enrollments/{id} | 学生退课 | 已验证 |
 | 7 | GET | /api/students/{studentId}/enrollments | 学生已选教学班列表（我的课程） | 已验证 |
-| 8 | GET | /api/sections/{sectionId}/students | 教学班学生名单（教师端） | 已实现 |
-| 9 | GET | /api/teachers/{teacherId}/sections | 教师授课教学班列表 | 已实现 |
-| 10 | POST | /api/scores | 录入/修改成绩 | 已实现 |
-| 11 | GET | /api/sections/{sectionId}/scores | 教学班成绩汇总 | 已实现 |
+| 8 | GET | /api/sections/{sectionId}/students | 教学班学生名单（教师端） | 已验证 |
+| 9 | GET | /api/teachers/{teacherId}/sections | 教师授课教学班列表 | 已验证 |
+| 10 | POST | /api/scores | 录入/修改成绩（自动判断新增/覆盖） | 已验证 |
+| 11 | GET | /api/sections/{sectionId}/scores | 教学班成绩汇总 | 已验证 |
 
 ## 二、各接口对应的业务流程与关键字段
 
 ### 1. POST /api/auth/login — 登录
 - **请求体**：
   ```json
-  { "username": "stu001", "password": "123456" }
+  { "username": "stu001", "password": "123456" }   // 学生
+  { "username": "tch001", "password": "123456" }   // 教师
   ```
-- **响应体**（学生登录）：
+- **响应体（学生登录）**：
   ```json
   {
-    "status": 200,
-    "msg": "登录成功",
-    "data": {
-      "token": "32位UUID字符串",
-      "role": "student",
-      "userId": 7,
-      "username": "stu001",
-      "realName": "赵小明",
-      "entityId": 1,
-      "studentId": 1
-    }
+    "status": 200, "msg": "登录成功",
+    "data": { "token": "...", "role": "student", "userId": 7, "username": "stu001", "realName": "赵小明", "entityId": 1, "studentId": 1 }
+  }
+  ```
+- **响应体（教师登录）**：
+  ```json
+  {
+    "status": 200, "msg": "登录成功",
+    "data": { "token": "...", "role": "teacher", "userId": 3, "username": "tch001", "realName": "王教授", "entityId": 1, "teacherId": 1 }
   }
   ```
 - **关键字段**：
-  - `token` 用于后续请求 Header `Authorization: Bearer {token}`
-  - `role` 决定页面路由（student/teacher/admin）
-  - **`studentId`** 是角色专属字段，学生登录时此字段为真实的 student_id，前端可用此值调用 `/api/students/{studentId}/enrollments`
-  - `entityId` 同 `studentId`（已修复，不再为空）
-  - 教师登录时对应字段为 `teacherId`，管理员为 `adminId`
+  - `token` → Header `Authorization: Bearer {token}`
+  - `role` → 决定页面路由（student/teacher/admin）
+  - `studentId` / `teacherId` / `adminId` → 角色专属字段，直接用于后续接口拼接路径
+  - `entityId` → 始终等于角色专属 ID（已修复）
 
 ### 2. GET /api/auth/info — 获取用户信息
 - **请求头**：`Authorization: Bearer {token}`
@@ -119,42 +117,44 @@
 - **响应关键字段**：sectionId, sectionCode, semester, courseName, credit, scheduleText, building, roomNo, capacityLimit, selectedCount, enrolledCount
 
 ### 10. POST /api/scores — 录入/修改成绩
-- **请求体**（⚠️ teacherId 为必填）：
+- **请求体**（⚠️ teacherId 必填，系统会校验 enrollment 是否属于该教师）：
   ```json
-  { "enrollmentId": 1, "teacherId": 1, "usualScore": 85, "examScore": 90 }
+  { "enrollmentId": 18, "teacherId": 1, "usualScore": 85, "examScore": 90 }
   ```
-- **响应**：
+- **首次录入响应**（status=200, msg="成绩录入成功"）：
   ```json
-  {
-    "status": 200,
-    "data": {
-      "enrollmentId": 1, "usualScore": 85, "examScore": 90,
-      "finalScore": 88.5, "gpaPoint": 3.7, "isPassed": 1
-    }
-  }
+  { "status": 200, "msg": "成绩录入成功", "data": { "scoreId": 1, "enrollmentId": 18, "usualScore": 85, "examScore": 90, "finalScore": 88.5, "gpaPoint": 3.7, "isPassed": 1, "gradedAt": "2026-05-13 10:00:00" } }
   ```
-- **鉴权**：系统会校验 enrollment 是否属于该教师的教学班，非本班记录返回 403
+- **修改成绩响应**（status=200, msg="成绩修改成功"）：
+  ```json
+  { "status": 200, "msg": "成绩修改成功", "data": { "scoreId": 1, "enrollmentId": 18, "usualScore": 95, "examScore": 95, "finalScore": 95.0, "gpaPoint": 4.0, "isPassed": 1, "gradedAt": "2026-05-13 10:05:00" } }
+  ```
+- **越权响应**（status=403, teacherId 不对）：
+  ```json
+  { "status": 403, "msg": "该选课记录不属于您的教学班", "data": null }
+  ```
+- **注**：系统自动判断首次录入 or 覆盖修改（同一 enrollmentId 提交两次即为修改）；finalScore = usualScore×0.3 + examScore×0.7
 
 ### 11. GET /api/sections/{sectionId}/scores — 教学班成绩汇总
-- **响应**：
+- **请求参数**：`?teacherId=1`（可选，传入则校验是否属于该教师的教学班）
+- **正常响应**：
   ```json
-  {
-    "status": 200,
-    "data": {
-      "totalStudents": N, "gradedCount": N, "ungradedCount": N,
-      "students": [{ "enrollmentId": 1, "studentNo": "S2025001", "studentName": "赵小明", "finalScore": 88.5, ... }]
-    }
-  }
+  { "status": 200, "data": { "sectionCode": "CS-101-01", "courseName": "程序设计基础", "totalStudents": 3, "gradedCount": 3, "ungradedCount": 0, "students": [...] } }
   ```
+- **越权响应**：`{ "status": 403, "msg": "该教学班不属于您" }`
 
-## 三、已废弃的旧接口（404 不可用）
+## 三、已废弃的旧控制器（9090 doc.html 已完全移除，所有路径返回 404）
 
-| 方法 | 路径 | 替代 |
-|------|------|------|
-| POST | /api/login | → /api/auth/login |
-| POST | /api/user/login | → /api/auth/login |
-| POST | /api/score/insert | → /api/enrollments（选课） |
-| GET | /api/score/deleteByCourseIdAndStudentIdAndTeacherId | → DELETE /api/enrollments/{id} |
+| 旧控制器 | 旧路径前缀 | 替代方案 |
+|----------|-----------|---------|
+| LoginController | /api/login | → /api/auth/login |
+| UserController | /api/user/* | → /api/auth/login + 新架构 |
+| CourseController | /api/course/* | → /api/sections/* |
+| StudentController | /api/student/* | → 新架构（学生数据通过 enrollment 查询） |
+| TeacherController | /api/teacher/* | → /api/teachers/{teacherId}/sections |
+| AdminController | /api/admin/* | → 新架构（待后续开发） |
+| ScoreController | /api/score/* | → POST /api/scores + GET /api/sections/{id}/scores |
+| TestController | /api/test | → 已移除 |
 
 ## 四、全局约定
 
@@ -190,4 +190,23 @@
 
 5. DELETE /api/enrollments/{enrollmentId}
    → 退课
+```
+
+## 七、教师端完整调用流程
+
+```
+1. POST /api/auth/login {"username":"tch001","password":"123456"}
+   → 获取 token + teacherId（如 teacherId=1）
+
+2. GET /api/teachers/1/sections
+   → 查看自己的教学班列表，获取 sectionId
+
+3. GET /api/sections/{sectionId}/students
+   → 查看某教学班的学生名单，获取 enrollmentId
+
+4. POST /api/scores {"enrollmentId":18,"teacherId":1,"usualScore":85,"examScore":90}
+   → 录入成绩（同一 enrollmentId 再次提交即为修改）
+
+5. GET /api/sections/{sectionId}/scores?teacherId=1
+   → 查看教学班成绩汇总（teacherId 校验通过才返回）
 ```

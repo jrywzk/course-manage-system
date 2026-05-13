@@ -14,8 +14,9 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
-@RestController
-@RequestMapping("/score")
+// 【已废弃】旧版成绩控制器，已从 Spring 容器移除，成绩管理迁移到 ScoreV2Controller
+// @RestController
+// @RequestMapping("/score")
 @Slf4j
 
 public class ScoreController {

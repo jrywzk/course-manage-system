@@ -46,18 +46,18 @@ public class AuthController {
         String password = body.get("password");
 
         if (username == null || password == null) {
-            return R.error("用户名和密码不能为空");
+            return R.error("用户名和密码不能为空", 400);
         }
 
         log.info("login username: {}", username);
         User user = userMapper.selectByUsernameAndPassword(username, password);
 
         if (user == null) {
-            return R.error("用户名或密码错误");
+            return R.error("用户名或密码错误", 401);
         }
 
         if (user.getStatus() == 0) {
-            return R.error("账号已停用");
+            return R.error("账号已停用", 403);
         }
 
         // 获取真实姓名和实体ID

@@ -30,6 +30,9 @@ public class ScoreV2Controller {
     @Resource
     private com.agiantii.backend.mapper.TeacherMapper teacherMapper;
 
+    @Resource
+    private com.agiantii.backend.mapper.CourseSectionMapper courseSectionMapper;
+
     @PostMapping("/scores")
     @ApiOperation("录入/修改成绩（依附 enrollment）")
     public R<Map<String, Object>> grade(@RequestBody Map<String, Object> body) {
@@ -39,7 +42,7 @@ public class ScoreV2Controller {
         Object examObj = body.get("examScore");
 
         if (enrollmentId == null || teacherId == null || usualObj == null || examObj == null) {
-            return R.error("enrollmentId、teacherId、usualScore、examScore不能为空");
+            return R.error("enrollmentId、teacherId、usualScore、examScore不能为空", 400);
         }
 
         BigDecimal usualScore = new BigDecimal(usualObj.toString());
@@ -47,7 +50,7 @@ public class ScoreV2Controller {
 
         if (usualScore.compareTo(BigDecimal.ZERO) < 0 || usualScore.compareTo(new BigDecimal("100")) > 0
                 || examScore.compareTo(BigDecimal.ZERO) < 0 || examScore.compareTo(new BigDecimal("100")) > 0) {
-            return R.error("成绩超出范围 0-100");
+            return R.error("成绩超出范围 0-100", 400);
         }
 
         if (enrollmentMapper.selectById(enrollmentId) == null) {
@@ -87,6 +90,7 @@ public class ScoreV2Controller {
 
             ScoreV2 existing = v2ScoreMapper.selectByEnrollmentId(enrollmentId);
             if (existing != null) {
+                score.setScoreId(existing.getScoreId());
                 v2ScoreMapper.updateByEnrollmentId(score);
             } else {
                 v2ScoreMapper.insert(score);
@@ -100,6 +104,7 @@ public class ScoreV2Controller {
             data.put("finalScore", finalScore);
             data.put("gpaPoint", gpaPoint);
             data.put("isPassed", isPassed);
+            data.put("gradedAt", new java.text.SimpleDateFormat("yyyy-MM-dd HH:mm:ss").format(new java.util.Date()));
 
             String message = existing != null ? "成绩修改成功" : "成绩录入成功";
             return R.success(data, message);
@@ -112,8 +117,25 @@ public class ScoreV2Controller {
     @GetMapping("/sections/{sectionId}/scores")
     @ApiOperation("教学班成绩汇总")
     @ApiImplicitParam(name = "sectionId", value = "教学班ID", required = true, paramType = "path")
-    public R<Map<String, Object>> sectionScores(@PathVariable Integer sectionId) {
-        log.info("GET /sections/{}/scores", sectionId);
+    public R<Map<String, Object>> sectionScores(@PathVariable Integer sectionId,
+                                                 @RequestParam(required = false) Integer teacherId) {
+        log.info("GET /sections/{}/scores: teacherId={}", sectionId, teacherId);
+
+        // 校验教学班是否存在且属于该教师
+        if (teacherId != null) {
+            Integer actualTeacherId = courseSectionMapper.selectTeacherIdBySectionId(sectionId);
+            if (actualTeacherId == null) {
+                return R.error("教学班不存在", 404);
+            }
+            if (!actualTeacherId.equals(teacherId)) {
+                return R.error("该教学班不属于您", 403);
+            }
+        }
+
+        // 获取教学班基本信息
+        com.agiantii.backend.pojo.vo.CourseSectionVo sectionInfo =
+                courseSectionMapper.selectSectionDetail(sectionId);
+
         List<Map<String, Object>> students = v2ScoreMapper.selectSectionScores(sectionId);
 
         int totalStudents = students.size();
@@ -125,6 +147,10 @@ public class ScoreV2Controller {
         }
 
         Map<String, Object> data = new HashMap<>();
+        if (sectionInfo != null) {
+            data.put("sectionCode", sectionInfo.getSectionCode());
+            data.put("courseName", sectionInfo.getCourseName());
+        }
         data.put("totalStudents", totalStudents);
         data.put("gradedCount", gradedCount);
         data.put("ungradedCount", totalStudents - gradedCount);

@@ -14,8 +14,9 @@ import java.sql.SQLException;// 【删除】没用到的 import，应该删掉
 import java.util.List;
 
 @Slf4j
-@RestController
-@RequestMapping("/course")
+// 已废弃 旧版课程控制器 已从Spring容器移除 课程管理迁移到CourseSectionController
+// @RestController
+// @RequestMapping("/course")
 public class CourseController {
     @Resource
     private CourseMapper courseMapper;

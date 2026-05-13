@@ -15,8 +15,9 @@ import org.springframework.web.bind.annotation.RestController;
 import javax.annotation.Resource;
 
 @Slf4j
-@RestController
-@RequestMapping("/user")
+// 【已废弃】旧版用户控制器，已从 Spring 容器移除，用户管理迁移到新架构
+// @RestController
+// @RequestMapping("/user")
 public class UserController {
 //    private static final Logger log = LoggerFactory.getLogger(UserController.class);
     @Resource

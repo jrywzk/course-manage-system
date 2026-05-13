@@ -15,8 +15,9 @@ import javax.annotation.Resource;
 import java.util.List;
 
 @Slf4j
-@RestController
-@RequestMapping("/student")
+// 已废弃 旧版学生控制器 已从Spring容器移除 学生功能迁移到新架构
+// @RestController
+// @RequestMapping("/student")
 public class StudentController {
     @Resource
     private UserMapper userMapper;
