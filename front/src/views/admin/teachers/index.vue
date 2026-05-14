@@ -77,7 +77,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { adminApi } from '@/api/admin'
+import { adminNewApi } from '@/api/new-api'
 import './style.scss'
 
 const loading = ref(false)
@@ -85,7 +85,7 @@ const dialogVisible = ref(false)
 const dialogType = ref('add')
 const formRef = ref(null)
 
-// 教师列表
+// 教师列表（从 /api/sections 提取唯一教师）
 const teacherList = ref([])
 
 // 教师表单
@@ -107,19 +107,32 @@ const rules = {
   ]
 }
 
-// 获取教师列表
+// 获取教师列表（从 /api/sections 数据中提取唯一教师）
 const fetchTeachers = async () => {
   try {
     loading.value = true
-    const res = await adminApi.getAllTeachers()
-    if (res.status === 200) {
-      teacherList.value = res.data
-    } else {
-      ElMessage.warning(res.msg || '获取教师列表失败')
+    const res = await adminNewApi.getAllSections()
+    if (res && (res.status === 200 || res.code === 200)) {
+      const sections = res.data?.list || res.data || []
+      // 提取唯一教师
+      const teacherMap = {}
+      sections.forEach(s => {
+        if (s.teacherName && !teacherMap[s.teacherName]) {
+          teacherMap[s.teacherName] = {
+            id: s.teacherId || '',
+            name: s.teacherName,
+            college: s.building || '未知学院'
+          }
+        }
+      })
+      teacherList.value = Object.values(teacherMap)
+      if (teacherList.value.length === 0) {
+        ElMessage.info('暂无教师数据')
+      }
     }
   } catch (error) {
     console.error('获取教师列表失败:', error)
-    ElMessage.error('获取教师列表失败')
+    ElMessage.info('教师管理接口暂未上线，请等待后端更新')
   } finally {
     loading.value = false
   }
@@ -127,77 +140,23 @@ const fetchTeachers = async () => {
 
 // 处理添加教师
 const handleAdd = () => {
-  dialogType.value = 'add'
-  Object.assign(teacherForm, {
-    id: '',
-    name: '',
-    college: '',
-    password: ''
-  })
-  dialogVisible.value = true
+  ElMessage.info('教师添加功能暂不可用，请等待后端接口上线')
 }
 
 // 处理编辑教师
 const handleEdit = (teacher) => {
-  dialogType.value = 'edit'
-  Object.assign(teacherForm, teacher)
-  dialogVisible.value = true
+  ElMessage.info('教师编辑功能暂不可用，请等待后端接口上线')
 }
 
 // 处理删除教师
 const handleDelete = async (teacher) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除教师"${teacher.name}"吗？`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    const res = await adminApi.deleteTeacher(teacher.id)
-    if (res.status === 200) {
-      ElMessage.success('删除成功')
-      fetchTeachers()
-    } else {
-      ElMessage.warning(res.msg || '删除失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除教师失败:', error)
-      ElMessage.error('删除教师失败')
-    }
-  }
+  ElMessage.warning('删除功能暂不可用')
 }
 
 // 处理表单提交
 const handleSubmit = async () => {
-  if (!formRef.value) return
-  
-  try {
-    await formRef.value.validate()
-    
-    if (dialogType.value === 'add') {
-      const res = await adminApi.addTeacher(teacherForm, teacherForm.password)
-      if (res.status === 200) {
-        ElMessage.success('添加成功')
-        dialogVisible.value = false
-        fetchTeachers()
-      } else {
-        ElMessage.warning(res.msg || '添加失败')
-      }
-    } else {
-      const res = await adminApi.updateTeacher(teacherForm)
-      if (res.status === 200) {
-        ElMessage.success('更新成功')
-        dialogVisible.value = false
-        fetchTeachers()
-      } else {
-        ElMessage.warning(res.msg || '更新失败')
-      }
-    }
+  ElMessage.warning('表单提交功能暂不可用')
+}
   } catch (error) {
     console.error('保存教师失败:', error)
     ElMessage.error('保存失败')

@@ -16,7 +16,7 @@
         :rules="rules" 
         ref="loginFormRef"
         v-loading="loading"
-        element-loading-text="正在登录，请稍候..."
+        element-loading-text="正在登录..."
         element-loading-background="rgba(0, 0, 0, 0.5)"
       >
         <el-form-item prop="username">
@@ -47,16 +47,16 @@
           @click="handleLogin"
           :loading="loading"
         >
-          <span class="button-text">{{ loading ? '登录中...' : '登 录' }}</span>
+          <span class="button-text">{{ loading ? '正在登录...' : '登 录' }}</span>
           <el-icon class="button-icon" v-if="!loading"><ArrowRight /></el-icon>
         </el-button>
       </el-form>
       
       <div class="demo-info">
         <p class="demo-title">演示账号（密码均为 123456）</p>
-        <p>管理员：admin01</p>
-        <p>教师：tch001 ~ tch004</p>
-        <p>学生：stu001 ~ stu008</p>
+        <p class="demo-role"><span class="role-tag admin">管理员</span> admin01</p>
+        <p class="demo-role"><span class="role-tag teacher">教师</span> tch001 ~ tch004</p>
+        <p class="demo-role"><span class="role-tag student">学生</span> stu001 ~ stu008</p>
       </div>
     </el-card>
   </div>
@@ -120,16 +120,23 @@ const handleLogin = async () => {
     })
     
     if (res && (res.code === 200 || res.status === 200) && res.data?.token) {
-      const { token, role, userId, realName, entityId } = res.data
+      const { token, role, userId, realName, entityId, teacherId, studentId } = res.data
       localStorage.setItem('token', token)
       localStorage.setItem('uid', userId)
       localStorage.setItem('username', loginForm.username)
       localStorage.setItem('realName', realName || '')
       localStorage.setItem('role', role)
 
-      // 保存学生端 entityId = studentId
-      if (role === 'student' && entityId) {
-        localStorage.setItem('studentId', entityId)
+      // 保存 teacherId（教师端接口必须）
+      if (role === 'teacher') {
+        const tid = teacherId || entityId
+        if (tid) localStorage.setItem('teacherId', tid)
+      }
+
+      // 保存 studentId（学生端接口必须）
+      if (role === 'student') {
+        const sid = studentId || entityId
+        if (sid) localStorage.setItem('studentId', sid)
       }
 
       const routes = {

@@ -72,16 +72,15 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { adminApi } from '@/api/admin'
+import { adminNewApi } from '@/api/new-api'
 import './style.scss'
 
 const loading = ref(false)
-const searchKey = ref('')
 const dialogVisible = ref(false)
 const dialogType = ref('add')
 const formRef = ref(null)
 
-// 学生列表
+// 学生列表（当前后端无独立学生管理接口，从教学班数据中模拟提取）
 const studentList = ref([])
 
 // 学生表单
@@ -101,19 +100,23 @@ const rules = {
   ]
 }
 
-// 获取学生列表
+// 获取学生列表（当前从 sections/students 接口提取，仅供参考）
 const fetchStudents = async () => {
   try {
     loading.value = true
-    const res = await adminApi.getAllStudents()
-    if (res.status === 200) {
-      studentList.value = res.data
-    } else {
-      ElMessage.warning(res.msg || '获取学生列表失败')
+    // 获取所有教学班
+    const res = await adminNewApi.getAllSections()
+    if (res && (res.status === 200 || res.code === 200)) {
+      const sections = res.data?.list || res.data || []
+      // 提取唯一的学生信息（从 teacherName 中获取 — 暂用空列表提示）
+      studentList.value = []
+      if (sections.length === 0) {
+        ElMessage.info('暂无教学班数据，学生管理功能依赖后端新版接口')
+      }
     }
   } catch (error) {
     console.error('获取学生列表失败:', error)
-    ElMessage.error('获取学生列表失败')
+    ElMessage.info('学生管理接口暂未上线，请等待后端更新')
   } finally {
     loading.value = false
   }
@@ -121,83 +124,28 @@ const fetchStudents = async () => {
 
 // 处理搜索
 const handleSearch = () => {
-  // TODO: 实现搜索功能
+  ElMessage.info('搜索功能暂不可用')
 }
 
 // 处理添加学生
 const handleAdd = () => {
-  dialogType.value = 'add'
-  Object.assign(studentForm, {
-    id: '',
-    name: '',
-    password: ''
-  })
-  dialogVisible.value = true
+  ElMessage.info('学生添加功能暂不可用，请等待后端接口上线')
 }
 
 // 处理编辑学生
 const handleEdit = (student) => {
-  dialogType.value = 'edit'
-  Object.assign(studentForm, student)
-  dialogVisible.value = true
+  ElMessage.info('学生编辑功能暂不可用，请等待后端接口上线')
 }
 
 // 处理删除学生
 const handleDelete = async (student) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除学生"${student.name}"吗？`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    const res = await adminApi.deleteStudent(student.id)
-    if (res.status === 200) {
-      ElMessage.success('删除成功')
-      fetchStudents()
-    } else {
-      ElMessage.warning(res.msg || '删除失败')
-    }
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除学生失败:', error)
-      ElMessage.error('删除学生失败')
-    }
-  }
+  ElMessage.warning('删除功能暂不可用')
 }
 
 // 处理表单提交
 const handleSubmit = async () => {
-  if (!formRef.value) return
-  
-  try {
-    await formRef.value.validate()
-    
-    if (dialogType.value === 'add') {
-      const res = await adminApi.addStudent(studentForm, studentForm.password)
-      if (res.status === 200) {
-        ElMessage.success('添加成功')
-        dialogVisible.value = false
-        fetchStudents()
-      } else {
-        ElMessage.warning(res.msg || '添加失败')
-      }
-    } else {
-      const res = await adminApi.updateStudent(studentForm)
-      if (res.status === 200) {
-        ElMessage.success('更新成功')
-        dialogVisible.value = false
-        fetchStudents()
-      } else {
-        ElMessage.warning(res.msg || '更新失败')
-      }
-    }
-  } catch (error) {
-    console.error('保存学生失败:', error)
+  ElMessage.warning('表单提交功能暂不可用')
+}
     ElMessage.error('保存失败')
   }
 }

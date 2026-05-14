@@ -139,7 +139,7 @@ import { ref, reactive, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus, Search } from '@element-plus/icons-vue'
-import { teacherApi } from '@/api/teacher'
+import { teacherNewApi } from '@/api/new-api'
 import './style.scss'
 
 const router = useRouter()
@@ -185,29 +185,32 @@ const getCapacityStatus = (selected = 0, limit = 1) => {
   return 'success'
 }
 
-// 获取课程列表
+// 获取课程列表（使用 /api/teachers/{teacherId}/sections）
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const teacherId = localStorage.getItem('uid')
-    const res = await teacherApi.getCoursesByTeacherId(teacherId)
+    const teacherId = localStorage.getItem('teacherId')
+    if (!teacherId) {
+      ElMessage.error('未获取到教师信息，请重新登录')
+      return
+    }
+    const res = await teacherNewApi.getSections(parseInt(teacherId, 10))
     
-    if (res.status === 200) {
-      // 获取每个课程的选课人数
-      const scorePromises = res.data.map(course =>
-        teacherApi.getScoresByCourseId(course.id)
-      )
-      
-      const scoreResults = await Promise.all(scorePromises)
-      
-      courseList.value = res.data.map((course, index) => ({
-        ...course,
-        selectedCount: scoreResults[index].data?.length || 0,
-        studentLimit: course.studentLimit || 0,
-        status: new Date(course.term) > new Date() ? 'active' : 'inactive'
+    if (res && (res.status === 200 || res.code === 200)) {
+      const data = res.data || []
+      courseList.value = data.map(s => ({
+        id: s.sectionId,
+        name: s.courseName,
+        sectionCode: s.sectionCode,
+        credit: s.credit || 0,
+        term: s.semester,
+        selectedCount: s.enrolledCount || s.selectedCount || 0,
+        studentLimit: s.capacityLimit || 0,
+        sectionCount: 1,
+        status: 'active'
       }))
     } else {
-      ElMessage.warning(res.msg || '获取课程列表失败')
+      ElMessage.warning(res?.msg || '获取课程列表失败')
     }
   } catch (error) {
     console.error('获取课程列表失败:', error)
@@ -219,95 +222,55 @@ const fetchCourses = async () => {
 
 // 处理搜索
 const handleSearch = () => {
-  // TODO: 实现搜索功能
+  // 前端过滤（新版 API 暂不支持搜索参数）
+  if (searchKey.value) {
+    const keyword = searchKey.value.toLowerCase()
+    courseList.value = courseList.value.filter(s =>
+      (s.name && s.name.toLowerCase().includes(keyword)) ||
+      (s.sectionCode && s.sectionCode.toLowerCase().includes(keyword))
+    )
+  } else {
+    fetchCourses()
+  }
 }
 
-// 处理添加课程
+// 处理添加课程（当前后端无新增教学班接口，提示用户）
 const handleAdd = () => {
-  dialogType.value = 'add'
-  const teacherId = localStorage.getItem('uid')
-  Object.assign(courseForm, {
-    name: '',
-    credit: 2,
-    studentLimit: 50,
-    term: '',
-    teacherId: parseInt(teacherId)
-  })
-  dialogVisible.value = true
+  ElMessage.info('课程添加功能暂不可用，请通过后端管理教学班数据')
 }
 
 // 处理编辑课程
 const handleEdit = (course) => {
   dialogType.value = 'edit'
-  const teacherId = localStorage.getItem('uid')
   Object.assign(courseForm, {
-    ...course,
-    teacherId: parseInt(teacherId)
+    name: course.name,
+    credit: course.credit,
+    studentLimit: course.studentLimit,
+    term: course.term || '',
+    teacherId: localStorage.getItem('teacherId') || ''
   })
   dialogVisible.value = true
 }
 
-// 处理删除课程
+// 处理删除课程（暂禁用）
 const handleDelete = async (course) => {
-  try {
-    await ElMessageBox.confirm(
-      `确定要删除课程"${course.name}"吗？`,
-      '删除确认',
-      {
-        confirmButtonText: '确定',
-        cancelButtonText: '取消',
-        type: 'warning'
-      }
-    )
-    
-    await teacherApi.deleteCourse(course.id)
-    ElMessage.success('删除成功')
-    fetchCourses()
-  } catch (error) {
-    if (error !== 'cancel') {
-      console.error('删除课程失败:', error)
-      ElMessage.error('删除课程失败')
-    }
-  }
+  ElMessage.warning('删除功能暂不可用')
 }
 
-// 处理成绩管理
+// 处理成绩管理（跳转到成绩管理页，传入 sectionId）
 const handleGrades = (course) => {
-  router.push(`/teacher/grades?courseId=${course.id}`)
+  router.push(`/teacher/grades?sectionId=${course.id}`)
 }
 
 // 处理表单提交
 const handleSubmit = async () => {
   if (!formRef.value) return
-  
   try {
     await formRef.value.validate()
-    
-    const teacherId = localStorage.getItem('uid')
-    courseForm.teacherId = parseInt(teacherId)
-    
-    if (dialogType.value === 'add') {
-      const res = await teacherApi.addCourse(courseForm)
-      if (res.status === 200) {
-        ElMessage.success('添加成功')
-        dialogVisible.value = false
-        fetchCourses()
-      } else {
-        ElMessage.warning(res.msg || '添加失败')
-      }
-    } else {
-      const res = await teacherApi.updateCourse(courseForm)
-      if (res.status === 200) {
-        ElMessage.success('更新成功')
-        dialogVisible.value = false
-        fetchCourses()
-      } else {
-        ElMessage.warning(res.msg || '更新失败')
-      }
-    }
+    ElMessage.warning('课程编辑功能暂不可用，请通过后端直接管理数据')
+    dialogVisible.value = false
   } catch (error) {
     console.error('保存课程失败:', error)
-    ElMessage.error('保存失败')
   }
 }
 

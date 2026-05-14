@@ -91,7 +91,7 @@
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
 import { useRouter } from 'vue-router'
-import { teacherApi } from '@/api/teacher'
+import { teacherNewApi } from '@/api/new-api'
 import './style.scss'
 
 const router = useRouter()
@@ -119,57 +119,42 @@ const gradeCanvas = ref(null)
 const fetchTeacherData = async () => {
   try {
     loading.value = true
-    const teacherId = localStorage.getItem('uid')
-    const res = await teacherApi.getCoursesByTeacherId(teacherId)
+    const teacherId = localStorage.getItem('teacherId')
+    if (!teacherId) return
+    const res = await teacherNewApi.getSections(parseInt(teacherId, 10))
     
     if (res && res.data) {
-      courseList.value = res.data.map(course => ({
-        ...course,
-        selectedCount: 0,
-        gradesEntered: false
+      courseList.value = res.data.map(section => ({
+        ...section,
+        id: section.id,
+        name: section.courseName || section.sectionCode,
+        credit: section.credit || 0,
+        selectedCount: section.totalStudents || 0,
+        studentLimit: section.studentLimit || section.totalStudents || 0,
+        gradesEntered: section.gradedCount > 0
       }))
       
-      // 获取每个课程的选课人数和成绩信息
-      const scorePromises = courseList.value.map(course =>
-        teacherApi.getScoresByCourseId(course.id)
-      )
-      
-      const scoreResults = await Promise.all(scorePromises)
-      
-      // 更新课程信息和统计数据
+      // 更新统计数据
       let totalStudents = 0
       let totalScore = 0
       let passedCount = 0
       let scoreCount = 0
       
-      courseList.value = courseList.value.map((course, index) => {
-        const scores = scoreResults[index].data || []
-        const selectedCount = scores.length
-        const gradesEntered = scores.some(score => score.score > 0)
-        
-        totalStudents += selectedCount
-        scores.forEach(score => {
-          if (score.score > 0) {
-            totalScore += score.score
-            scoreCount++
-            if (score.score >= 60) passedCount++
-          }
-        })
-        
-        return {
-          ...course,
-          selectedCount,
-          gradesEntered
+      courseList.value.forEach(section => {
+        totalStudents += (section.totalStudents || 0)
+        const avgScore = section.averageScore || 0
+        const passCount = section.passedCount || 0
+        if (avgScore > 0) {
+          totalScore += avgScore * (section.totalStudents || 0)
+          scoreCount += (section.totalStudents || 0)
+          passedCount += passCount
         }
       })
       
-      // 更新统计数据
       stats.totalCourses = courseList.value.length
-      stats.currentTermCourses = courseList.value.filter(
-        course => course.term === '2023-2' // TODO: 动态获取当前学期
-      ).length
+      stats.currentTermCourses = courseList.value.length
       stats.totalStudents = totalStudents
-      stats.averageStudents = Math.round(totalStudents / courseList.value.length)
+      stats.averageStudents = courseList.value.length > 0 ? Math.round(totalStudents / courseList.value.length) : 0
       stats.averageScore = scoreCount > 0 ? totalScore / scoreCount : 0
       stats.passRate = scoreCount > 0 ? (passedCount / scoreCount) * 100 : 0
     }
@@ -226,14 +211,14 @@ const getCapacityTagType = (selected, limit) => {
   return 'success'
 }
 
-// 处理成绩管理
+// 处理成绩管理（传入 sectionId）
 const handleGrades = (course) => {
-  router.push(`/teacher/grades?courseId=${course.id}`)
+  router.push(`/teacher/grades?sectionId=${course.id || course.sectionId}`)
 }
 
 // 处理课程编辑
 const handleEdit = (course) => {
-  router.push(`/teacher/courses/edit?courseId=${course.id}`)
+  router.push(`/teacher/courses/edit?sectionId=${course.id || course.sectionId}`)
 }
 
 // 监听数据变化更新图表
