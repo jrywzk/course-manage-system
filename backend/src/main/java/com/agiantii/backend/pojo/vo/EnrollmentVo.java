@@ -51,6 +51,12 @@ public class EnrollmentVo {
     @ApiModelProperty("是否已有成绩")
     private Boolean hasScore;
 
+    @ApiModelProperty("平时成绩（有成绩时返回）")
+    private BigDecimal usualScore;
+
+    @ApiModelProperty("考试成绩（有成绩时返回）")
+    private BigDecimal examScore;
+
     @ApiModelProperty("综合成绩（有成绩时返回）")
     private BigDecimal finalScore;
 

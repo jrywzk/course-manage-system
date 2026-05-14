@@ -37,6 +37,7 @@ public interface EnrollmentMapper {
             "cr.building, cr.room_no AS roomNo, " +
             "DATE_FORMAT(e.select_time, '%Y-%m-%d %H:%i:%s') AS selectTime, e.status, " +
             "CASE WHEN sc.score_id IS NOT NULL THEN TRUE ELSE FALSE END AS hasScore, " +
+            "sc.usual_score AS usualScore, sc.exam_score AS examScore, " +
             "sc.final_score AS finalScore, sc.gpa_point AS gpaPoint, sc.is_passed AS isPassed " +
             "FROM t_enrollment e " +
             "JOIN t_course_section cs ON e.section_id = cs.section_id " +
@@ -58,6 +59,7 @@ public interface EnrollmentMapper {
             "m.major_name AS majorName, " +
             "DATE_FORMAT(e.select_time, '%Y-%m-%d %H:%i:%s') AS selectTime, " +
             "CASE WHEN sc.score_id IS NOT NULL THEN TRUE ELSE FALSE END AS hasScore, " +
+            "sc.usual_score AS usualScore, sc.exam_score AS examScore, " +
             "sc.final_score AS finalScore, sc.is_passed AS isPassed " +
             "FROM t_enrollment e " +
             "JOIN t_student st ON e.student_id = st.student_id " +

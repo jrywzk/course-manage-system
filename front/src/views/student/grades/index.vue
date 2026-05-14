@@ -49,13 +49,82 @@
       </el-col>
     </el-row>
 
-    <!-- 成绩列表 — 成绩详情表格暂隐藏，等新版接口就绪后恢复 -->
+    <!-- 成绩详情表格 -->
     <el-card class="grade-list">
       <template #header>
         <div class="card-header">
           <span>成绩详情</span>
+          <div class="header-actions">
+            <el-select
+              v-model="filterForm.term"
+              placeholder="全部学期"
+              clearable
+              @change="handleSearch"
+            >
+              <el-option
+                v-for="item in terms"
+                :key="item.value"
+                :label="item.label"
+                :value="item.value"
+              />
+            </el-select>
+          </div>
         </div>
       </template>
+
+      <el-table
+        :data="gradeList"
+        v-loading="loading"
+        stripe
+        style="width: 100%"
+        empty-text="暂无成绩记录"
+        :header-cell-style="{ background: 'var(--el-fill-color-light)', color: 'var(--el-text-color-primary)' }"
+      >
+        <el-table-column prop="term" label="学期" width="180" align="center" />
+        <el-table-column prop="courseId" label="课程编号" width="110" align="center" />
+        <el-table-column prop="courseName" label="课程名称" min-width="160" show-overflow-tooltip />
+        <el-table-column prop="sectionCode" label="教学班号" width="110" align="center" />
+        <el-table-column prop="credit" label="学分" width="70" align="center" />
+        <el-table-column prop="usualScore" label="平时成绩" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.usualScore != null">{{ row.usualScore }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="examScore" label="考试成绩" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.examScore != null">{{ row.examScore }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column prop="score" label="综合成绩" width="100" align="center">
+          <template #default="{ row }">
+            <span v-if="row.score != null" :class="getGradeClass(row.score)">
+              {{ row.score }}
+            </span>
+            <el-tag v-else type="info" size="small">未评分</el-tag>
+          </template>
+        </el-table-column>
+        <el-table-column prop="gpa" label="GPA绩点" width="90" align="center">
+          <template #default="{ row }">
+            <span v-if="row.gpa != null">{{ row.gpa }}</span>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+        <el-table-column label="是否通过" width="100" align="center">
+          <template #default="{ row }">
+            <template v-if="row.score != null">
+              <el-tag v-if="row.isPassed === 1" type="success" size="small">通过</el-tag>
+              <el-tag v-else type="danger" size="small">未通过</el-tag>
+            </template>
+            <span v-else class="text-muted">-</span>
+          </template>
+        </el-table-column>
+      </el-table>
+
+      <div class="pagination">
+        <span class="total-info">共 {{ gradeList.length }} 条记录</span>
+      </div>
     </el-card>
   </div>
 </template>

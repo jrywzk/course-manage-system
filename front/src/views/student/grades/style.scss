@@ -66,11 +66,15 @@
         gap: 10px;
         
         .el-select {
-          width: 160px;
+          width: 220px;
         }
       }
     }
     
+    .text-muted {
+      color: var(--el-text-color-placeholder);
+    }
+
     .grade-excellent {
       color: #67C23A;
       font-weight: bold;
@@ -93,9 +97,15 @@
   }
   
   .pagination {
-    margin-top: 20px;
+    margin-top: 16px;
     display: flex;
     justify-content: flex-end;
-    padding: 10px 0;
+    align-items: center;
+    padding: 8px 0;
+
+    .total-info {
+      font-size: 13px;
+      color: var(--el-text-color-secondary);
+    }
   }
 }

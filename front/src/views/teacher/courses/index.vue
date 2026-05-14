@@ -22,17 +22,9 @@
       <el-table :data="courseList" style="width: 100%">
         <el-table-column prop="id" label="课程代码" min-width="100" />
         <el-table-column prop="name" label="课程名称" min-width="140" />
-        <!-- TODO: 新版 course_section 接口后展开展示教学班列表 -->
-        <el-table-column label="教学班" min-width="180">
-          <template #default="{ row }">
-            <div class="section-list">
-              <span class="text-placeholder">共 {{ row.sectionCount || 0 }} 个教学班</span>
-              <el-button type="primary" link size="small">查看详情</el-button>
-            </div>
-          </template>
-        </el-table-column>
+        <el-table-column prop="sectionCode" label="教学班" min-width="160" />
         <el-table-column prop="credit" label="学分" min-width="70" align="center" />
-        <el-table-column label="开课日期" min-width="130">
+        <el-table-column label="学期" min-width="130">
           <template #default="{ row }">
             {{ formatDate(row.term) }}
           </template>
@@ -62,96 +54,24 @@
       </el-table>
     </el-card>
 
-    <!-- 添加/编辑课程对话框 -->
-    <el-dialog
-      v-model="dialogVisible"
-      :title="dialogType === 'add' ? '添加课程' : '编辑课程'"
-      width="500px"
-    >
-      <el-form
-        ref="formRef"
-        :model="courseForm"
-        :rules="rules"
-        label-width="100px"
-      >
-        <el-form-item label="课程名称" prop="name">
-          <el-input v-model="courseForm.name" placeholder="请输入课程名称" />
-        </el-form-item>
-        
-        <el-form-item label="学分" prop="credit">
-          <el-input-number 
-            v-model="courseForm.credit" 
-            :min="1" 
-            :max="10"
-            :precision="1"
-            :step="0.5"
-          />
-        </el-form-item>
-        
-        <el-form-item label="课程容量" prop="studentLimit">
-          <el-input-number 
-            v-model="courseForm.studentLimit" 
-            :min="1" 
-            :max="200"
-            :step="5"
-          />
-        </el-form-item>
-        
-        <el-form-item label="开课日期" prop="term">
-          <el-date-picker
-            v-model="courseForm.term"
-            type="date"
-            placeholder="选择开课日期"
-            format="YYYY-MM-DD"
-            value-format="YYYY-MM-DD"
-            class="w-full"
-          />
-        </el-form-item>
-      </el-form>
-      <template #footer>
-        <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
-        </span>
-      </template>
-    </el-dialog>
+
   </div>
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, onMounted } from 'vue'
 import { useRouter } from 'vue-router'
-import { ElMessage, ElMessageBox } from 'element-plus'
-import { Plus, Search } from '@element-plus/icons-vue'
+import { ElMessage } from 'element-plus'
+import { Search } from '@element-plus/icons-vue'
 import { teacherNewApi } from '@/api/new-api'
 import './style.scss'
 
 const router = useRouter()
 const loading = ref(false)
 const searchKey = ref('')
-const dialogVisible = ref(false)
-const dialogType = ref('add')
-const formRef = ref(null)
 
 // 课程列表
 const courseList = ref([])
-
-// 课程表单
-const courseForm = reactive({
-  name: '',
-  credit: 2,
-  studentLimit: 50,
-  term: '',
-  teacherId: ''
-})
-
-// 表单验证规则
-const rules = {
-  name: [{ required: true, message: '请输入课程名称', trigger: 'blur' }],
-  credit: [{ required: true, message: '请选择学分', trigger: 'change' }],
-  studentLimit: [{ required: true, message: '请设置课程容量', trigger: 'change' }],
-  term: [{ required: true, message: '请选择开课日期', trigger: 'change' }]
-}
 
 // 获取容量百分比
 const getCapacityPercentage = (selected = 0, limit = 1) => {
@@ -218,44 +138,9 @@ const handleSearch = () => {
   }
 }
 
-// 处理添加课程（当前后端无新增教学班接口，提示用户）
-const handleAdd = () => {
-  ElMessage.info('课程添加功能暂不可用，请通过后端管理教学班数据')
-}
-
-// 处理编辑课程
-const handleEdit = (course) => {
-  dialogType.value = 'edit'
-  Object.assign(courseForm, {
-    name: course.name,
-    credit: course.credit,
-    studentLimit: course.studentLimit,
-    term: course.term || '',
-    teacherId: localStorage.getItem('teacherId') || ''
-  })
-  dialogVisible.value = true
-}
-
-// 处理删除课程（暂禁用）
-const handleDelete = async (course) => {
-  ElMessage.warning('删除功能暂不可用')
-}
-
 // 处理成绩管理（跳转到成绩管理页，传入 sectionId）
 const handleGrades = (course) => {
   router.push(`/teacher/grades?sectionId=${course.id}`)
-}
-
-// 处理表单提交
-const handleSubmit = async () => {
-  if (!formRef.value) return
-  try {
-    await formRef.value.validate()
-    ElMessage.warning('课程编辑功能暂不可用，请通过后端直接管理数据')
-    dialogVisible.value = false
-  } catch (error) {
-    console.error('保存课程失败:', error)
-  }
 }
 
 // 初始化
@@ -263,14 +148,11 @@ onMounted(() => {
   fetchCourses()
 })
 
-// 格式化日期
-const formatDate = (date) => {
-  if (!date) return ''
-  return new Date(date).toLocaleDateString('zh-CN', {
-    year: 'numeric',
-    month: 'long',
-    day: 'numeric'
-  })
+// 格式化学期显示
+const formatDate = (semester) => {
+  if (!semester) return ''
+  // semester 格式如 "2025-2026-1"（学年-学期）
+  return semester
 }
 </script> 
 
