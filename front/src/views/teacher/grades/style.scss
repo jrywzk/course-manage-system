@@ -24,46 +24,53 @@
   .statistics {
     margin-top: 20px;
     padding: 20px;
-    background: rgba(255, 255, 255, 0.02);
+    background: rgba(0, 0, 0, 0.5);
     border-radius: 8px;
+    border: 1px solid rgba(255, 255, 255, 0.15);
+    display: flex;
+    justify-content: space-around;
+    gap: 16px;
+
+    .stat-item {
+      text-align: center;
+      .stat-label {
+        display: block;
+        font-size: 13px;
+        color: rgba(255, 255, 255, 0.7);
+        margin-bottom: 6px;
+      }
+      .stat-value {
+        display: block;
+        font-size: 22px;
+        font-weight: 700;
+        color: #fff;
+      }
+    }
   }
 
-  // 分数输入框 — 浅灰色底色
+  // 分数输入框 — 深色背景下输入框内数字用黑色
   :deep(.el-input-number) {
     .el-input__wrapper {
-      background-color: #eef1f7 !important;
-      border: 1px solid #d0d5e0;
+      background-color: rgba(255, 255, 255, 0.85) !important;
+      border: 1px solid rgba(255, 255, 255, 0.25);
+      box-shadow: none;
     }
     .el-input__inner {
-      color: #1a1a2e !important;
+      color: #000 !important;
       font-weight: 700;
       font-size: 14px;
     }
     .el-input-number__decrease,
     .el-input-number__increase {
-      background-color: #e4e8f2;
-      color: #333;
-      border-color: #d0d5e0;
+      background-color: rgba(255, 255, 255, 0.7);
+      color: #000;
+      border-color: rgba(255, 255, 255, 0.2);
     }
   }
 
-  // 表格中成绩列 —— 浅灰底色
   :deep(.el-table) {
-    td.el-table__cell {
-      background-color: #f0f2f8 !important;
-    }
-
-    .el-table__row:hover > td.el-table__cell {
-      background-color: #e4e8f2 !important;
-    }
-
     .el-table__header-wrapper th.el-table__cell {
-      background-color: #262838 !important;
+      background-color: rgba(255, 255, 255, 0.05) !important;
     }
-  }
-
-  // 只让包含 input-number 的单元格变为浅色
-  :deep(td.el-table__cell:has(.el-input-number)) {
-    background-color: #f0f2f8 !important;
   }
 } 

@@ -14,8 +14,8 @@
         <el-table-column prop="semester" label="学期" width="120" />
         <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.hasScore ? 'success' : 'warning'">
-              {{ row.hasScore ? '已有成绩' : '待录入' }}
+            <el-tag :type="getSectionStatusTag(row)">
+              {{ getSectionStatusText(row) }}
             </el-tag>
           </template>
         </el-table-column>
@@ -44,7 +44,7 @@
           <div class="card-header">
             <span>学生成绩列表</span>
             <div class="header-actions">
-              <el-button type="success" @click="handleSaveAll" :disabled="!hasChanges">
+              <el-button type="success" @click="handleSaveAll">
                 保存全部
               </el-button>
             </div>
@@ -91,15 +91,22 @@
               </el-tag>
             </template>
           </el-table-column>
-          <el-table-column label="操作" width="120" align="center">
+          <el-table-column label="操作" width="180" align="center">
             <template #default="{ row }">
               <el-button
                 type="primary"
                 link
-                :disabled="!row.changed"
                 @click="handleSaveOne(row)"
               >
                 保存
+              </el-button>
+              <el-button
+                type="danger"
+                link
+                :disabled="!row.hasScore"
+                @click="handleClearScore(row)"
+              >
+                清空
               </el-button>
             </template>
           </el-table-column>
@@ -107,20 +114,10 @@
 
         <!-- 成绩统计 -->
         <div class="statistics">
-          <el-descriptions :column="4" border>
-            <el-descriptions-item label="平均分">
-              {{ stats.average.toFixed(1) }}
-            </el-descriptions-item>
-            <el-descriptions-item label="及格率">
-              {{ stats.passRate.toFixed(1) }}%
-            </el-descriptions-item>
-            <el-descriptions-item label="优秀率">
-              {{ stats.excellentRate.toFixed(1) }}%
-            </el-descriptions-item>
-            <el-descriptions-item label="最高分">
-              {{ stats.highest }}
-            </el-descriptions-item>
-          </el-descriptions>
+          <div class="stat-item"><span class="stat-label">平均分</span><span class="stat-value">{{ stats.average.toFixed(1) }}</span></div>
+          <div class="stat-item"><span class="stat-label">及格率</span><span class="stat-value">{{ stats.passRate.toFixed(1) }}%</span></div>
+          <div class="stat-item"><span class="stat-label">优秀率</span><span class="stat-value">{{ stats.excellentRate.toFixed(1) }}%</span></div>
+          <div class="stat-item"><span class="stat-label">最高分</span><span class="stat-value">{{ stats.highest }}</span></div>
         </div>
       </el-card>
     </template>
@@ -156,10 +153,29 @@ const stats = reactive({
 
 // 是否有未保存的更改
 const hasChanges = computed(() =>
-  studentList.value.some(student => student.changed)
+  studentList.value.some(student => hasScoreChange(student))
 )
 
-// 计算总评成绩（平时30% + 考试70%）
+// 安全性获取 enrolledCount 默认值
+const getEnrolledCount = (s) => s.totalStudents || s.enrolledCount || s.selectedCount || 0
+
+// 教学班状态文本（三态：待录入 / 录入中 / 已录入）
+const getSectionStatusText = (row) => {
+  const graded = row.gradedCount || 0
+  const total = getEnrolledCount(row)
+  if (total === 0 || graded === 0) return '待录入'
+  if (graded >= total) return '已录入'
+  return '录入中'
+}
+
+// 教学班状态标签类型
+const getSectionStatusTag = (row) => {
+  const graded = row.gradedCount || 0
+  const total = getEnrolledCount(row)
+  if (total === 0 || graded === 0) return 'warning'
+  if (graded >= total) return 'success'
+  return ''  // info / default
+}
 const computeFinalScore = (row) => {
   const usual = row.usualScore || 0
   const exam = row.examScore || 0
@@ -177,11 +193,32 @@ const fetchSections = async () => {
     const res = await teacherNewApi.getSections(teacherId)
 
     if (res && res.data) {
-      sectionList.value = res.data.map(s => ({
-        ...s,
-        id: s.sectionId || s.id,
-        hasScore: s.gradedCount > 0
-      }))
+      // 为每个 section 获取成绩统计以确定录入状态
+      const sections = res.data
+      const sectionListRaw = await Promise.all(
+        sections.map(async (s) => {
+          const sectionId = s.sectionId || s.id
+          let gradedCount = s.gradedCount || 0
+          let totalStudents = s.totalStudents || s.enrolledCount || s.selectedCount || 0
+          // 尝试获取该 section 的成绩汇总数据
+          try {
+            const scoreRes = await teacherNewApi.getSectionScores(sectionId, teacherId)
+            if (scoreRes && (scoreRes.status === 200 || scoreRes.code === 200) && scoreRes.data) {
+              const scData = scoreRes.data
+              gradedCount = scData.gradedCount || gradedCount
+              totalStudents = scData.totalStudents || totalStudents
+            }
+          } catch (_) { /* 忽略单个查询失败 */ }
+          return {
+            ...s,
+            id: sectionId,
+            gradedCount,
+            totalStudents,
+            hasScore: gradedCount > 0
+          }
+        })
+      )
+      sectionList.value = sectionListRaw
     }
   } catch (error) {
     console.error('获取教学班列表失败:', error)
@@ -223,7 +260,8 @@ const fetchStudents = async (sectionId) => {
         ...s,
         changed: false,
         originalUsualScore: s.usualScore || 0,
-        originalExamScore: s.examScore || 0
+        originalExamScore: s.examScore || 0,
+        originalHasScore: s.hasScore || false
       }))
       updateStats()
     }
@@ -292,9 +330,21 @@ const handleScoreChange = (student) => {
   updateStats()
 }
 
+// 判断该学生是否有需要保存的更改（分数变更 或 清空后已改）
+const hasScoreChange = (student) => {
+  if (student.changed) return true
+  // 清空后 hasScore 已变 false，但分数为 0 即认为已清空待确认
+  if (!student.hasScore && (student.usualScore !== 0 || student.examScore !== 0)) return true
+  return false
+}
+
 // 保存单个学生成绩
 const handleSaveOne = async (student) => {
   try {
+    if (!hasScoreChange(student)) {
+      ElMessage.info('当前成绩未变更，无需保存')
+      return
+    }
     const teacherId = getTeacherId()
     const res = await teacherNewApi.saveScore(
       student.enrollmentId,
@@ -303,10 +353,21 @@ const handleSaveOne = async (student) => {
       student.examScore || 0
     )
     if (res && (res.status === 200 || res.code === 200)) {
+      const returned = res.data || {}
+      const wasScored = student.hasScore
       student.changed = false
+      student.usualScore = returned.usualScore ?? student.usualScore
+      student.examScore = returned.examScore ?? student.examScore
+      student.finalScore = returned.finalScore ?? student.finalScore
       student.originalUsualScore = student.usualScore || 0
       student.originalExamScore = student.examScore || 0
-      student.hasScore = true
+      student.hasScore = (returned.finalScore != null) || (student.usualScore > 0 || student.examScore > 0)
+      // 如果之前没有成绩，现在新增了一条 → gradedCount+1
+      if (!wasScored && student.hasScore && selectedSection.value) {
+        selectedSection.value.gradedCount = (selectedSection.value.gradedCount || 0) + 1
+        const idx = sectionList.value.findIndex(s => s.id === selectedSection.value?.id)
+        if (idx >= 0) sectionList.value[idx].gradedCount = (sectionList.value[idx].gradedCount || 0) + 1
+      }
       ElMessage.success('保存成功')
       updateStats()
     } else {
@@ -318,10 +379,58 @@ const handleSaveOne = async (student) => {
   }
 }
 
+// 清空学生成绩（调 saveScore 将成绩置 0，同时更新 section 录入状态）
+const handleClearScore = async (student) => {
+  try {
+    await ElMessageBox.confirm(
+      `确定要清空 ${student.studentName || student.studentNo} 的成绩吗？`,
+      '清空成绩',
+      { confirmButtonText: '确定清空', cancelButtonText: '取消', type: 'warning' }
+    )
+  } catch {
+    return
+  }
+
+  try {
+    const teacherId = getTeacherId()
+    const res = await teacherNewApi.saveScore(student.enrollmentId, teacherId, 0, 0)
+    if (res && (res.status === 200 || res.code === 200)) {
+      const returned = res.data || {}
+      student.changed = false
+      student.usualScore = 0
+      student.examScore = 0
+      student.finalScore = returned.finalScore ?? 0
+      student.originalUsualScore = 0
+      student.originalExamScore = 0
+      student.hasScore = false
+      // 更新当前 section 的 gradedCount
+      if (selectedSection.value) {
+        selectedSection.value.gradedCount = Math.max(0, (selectedSection.value.gradedCount || 1) - 1)
+      }
+      // 同步更新 sectionList 中对应的 section
+      const idx = sectionList.value.findIndex(s => s.id === selectedSection.value?.id)
+      if (idx >= 0) {
+        sectionList.value[idx].gradedCount = Math.max(0, (sectionList.value[idx].gradedCount || 1) - 1)
+      }
+      ElMessage.success('成绩已清空，可重新录入')
+      updateStats()
+    } else {
+      ElMessage.warning(res?.msg || '清空失败')
+    }
+  } catch (error) {
+    console.error('清空成绩失败:', error)
+    ElMessage.error('清空失败')
+  }
+}
+
 // 保存所有更改
 const handleSaveAll = async () => {
   try {
-    const changedStudents = studentList.value.filter(s => s.changed)
+    const changedStudents = studentList.value.filter(s => hasScoreChange(s))
+    if (changedStudents.length === 0) {
+      ElMessage.info('没有需要保存的更改')
+      return
+    }
     const teacherId = getTeacherId()
     const savePromises = changedStudents.map(s =>
       teacherNewApi.saveScore(
@@ -332,14 +441,29 @@ const handleSaveAll = async () => {
       )
     )
 
-    await Promise.all(savePromises)
+    const results = await Promise.all(savePromises)
 
-    studentList.value.forEach(s => {
+    // 逐个回写后端返回的数据，并更新 gradedCount
+    let newGradedDelta = 0
+    changedStudents.forEach((s, i) => {
+      const wasScored = s.hasScore
+      const returned = (results[i] && (results[i].status === 200 || results[i].code === 200)) 
+        ? (results[i].data || {}) : {}
       s.changed = false
+      s.usualScore = returned.usualScore ?? s.usualScore
+      s.examScore = returned.examScore ?? s.examScore
+      s.finalScore = returned.finalScore ?? s.finalScore
       s.originalUsualScore = s.usualScore || 0
       s.originalExamScore = s.examScore || 0
-      s.hasScore = true
+      s.hasScore = (returned.finalScore != null) || (s.usualScore > 0 || s.examScore > 0)
+      if (!wasScored && s.hasScore) newGradedDelta++
     })
+    // 更新 section 录入状态
+    if (newGradedDelta > 0 && selectedSection.value) {
+      selectedSection.value.gradedCount = (selectedSection.value.gradedCount || 0) + newGradedDelta
+      const idx = sectionList.value.findIndex(s => s.id === selectedSection.value?.id)
+      if (idx >= 0) sectionList.value[idx].gradedCount = (sectionList.value[idx].gradedCount || 0) + newGradedDelta
+    }
     ElMessage.success('全部保存成功')
     updateStats()
   } catch (error) {
