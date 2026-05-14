@@ -68,8 +68,12 @@ const activeMenu = computed(() => route.path)
 
 const handleCommand = (command) => {
   if (command === 'logout') {
+    localStorage.removeItem('token')
     localStorage.removeItem('uid')
     localStorage.removeItem('role')
+    localStorage.removeItem('teacherId')
+    localStorage.removeItem('username')
+    localStorage.removeItem('realName')
     router.push('/login')
   } else if (command === 'profile') {
     router.push('/teacher/profile')

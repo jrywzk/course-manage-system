@@ -1,33 +1,27 @@
 <template>
   <div class="grades-container">
-    <!-- 课程选择 -->
-<el-card class="section-card" v-if="!selectedCourse">
+    <!-- 教学班选择 -->
+    <el-card class="section-card" v-if="!selectedSection">
       <template #header>
         <div class="card-header">
-          <span>选择课程</span>
+          <span>选择教学班</span>
         </div>
       </template>
-      
-      <el-table :data="courseList" style="width: 100%">
-        <el-table-column prop="name" label="课程名称" min-width="180" />
-        <el-table-column prop="term" label="学期" width="180" />
-        <el-table-column prop="studentLimit" label="选课人数" width="120" align="center">
+
+      <el-table :data="sectionList" style="width: 100%" v-loading="loadingSections">
+        <el-table-column prop="sectionCode" label="教学班编号" min-width="140" />
+        <el-table-column prop="courseName" label="课程名称" min-width="180" />
+        <el-table-column prop="semester" label="学期" width="120" />
+        <el-table-column label="状态" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="getCapacityTagType(row.selectedCount, row.studentLimit)">
-              {{ row.selectedCount }}/{{ row.studentLimit }}
+            <el-tag :type="row.hasScore ? 'success' : 'warning'">
+              {{ row.hasScore ? '已有成绩' : '待录入' }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="成绩录入" width="100" align="center">
+        <el-table-column label="操作" width="140" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.gradesEntered ? 'success' : 'warning'">
-              {{ row.gradesEntered ? '已录入' : '未录入' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" width="120" align="center">
-          <template #default="{ row }">
-            <el-button type="primary" link @click="handleSelectCourse(row)">
+            <el-button type="primary" link @click="handleSelectSection(row)">
               管理成绩
             </el-button>
           </template>
@@ -38,11 +32,11 @@
     <!-- 成绩管理 -->
     <template v-else>
       <div class="action-bar">
-        <div class="course-info">
-          <h3>{{ selectedCourse.name }}</h3>
-          <p>{{ selectedCourse.term }} | 学分: {{ selectedCourse.credit }}</p>
+        <div class="section-info">
+          <h3>{{ selectedSection.courseName }}</h3>
+          <p>{{ selectedSection.sectionCode }} | {{ selectedSection.semester }}</p>
         </div>
-        <el-button type="success" @click="handleBack">返回课程列表</el-button>
+        <el-button type="success" @click="handleBack">返回教学班列表</el-button>
       </div>
 
       <el-card class="section-card" v-loading="loading">
@@ -58,63 +52,52 @@
         </template>
 
         <el-table :data="studentList" style="width: 100%">
-          <el-table-column prop="studentId" label="学号" min-width="100" />
-          <el-table-column prop="name" label="姓名" min-width="100" />
-          <!-- TODO: 新版 enrollment 关联后显示教学班编号 -->
-          <el-table-column label="教学班编号" min-width="100">
-            <template #default>
-              <span class="text-placeholder">—</span>
-            </template>
-          </el-table-column>
-          <!-- TODO: 新版成绩接口分平时成绩、考试成绩、总评 -->
-          <el-table-column label="平时成绩" min-width="100" align="center">
-            <template #default>
+          <el-table-column prop="studentNo" label="学号" min-width="120" />
+          <el-table-column prop="studentName" label="姓名" min-width="100" />
+          <el-table-column prop="majorName" label="专业" min-width="140" />
+          <el-table-column label="平时成绩" min-width="120" align="center">
+            <template #default="{ row }">
               <el-input-number
-                :model-value="0"
-                disabled
+                v-model="row.usualScore"
                 :min="0"
                 :max="100"
+                :precision="0"
                 size="small"
+                @change="handleScoreChange(row)"
               />
             </template>
           </el-table-column>
-          <el-table-column label="考试成绩" min-width="100" align="center">
-            <template #default>
+          <el-table-column label="考试成绩" min-width="120" align="center">
+            <template #default="{ row }">
               <el-input-number
-                :model-value="0"
-                disabled
+                v-model="row.examScore"
                 :min="0"
                 :max="100"
+                :precision="0"
                 size="small"
+                @change="handleScoreChange(row)"
               />
             </template>
           </el-table-column>
           <el-table-column label="总评成绩" min-width="120" align="center">
             <template #default="{ row }">
-              <el-input-number
-                v-model="row.score"
-                :min="0"
-                :max="100"
-                :precision="1"
-                :step="0.5"
-                @change="handleScoreChange(row)"
-              />
+              <span>{{ computeFinalScore(row) }}</span>
             </template>
           </el-table-column>
           <el-table-column label="状态" min-width="80" align="center">
             <template #default="{ row }">
-              <el-tag :type="getScoreTagType(row.score)">
-                {{ getScoreStatus(row.score) }}
+              <el-tag :type="row.hasScore ? 'success' : 'info'">
+                {{ row.hasScore ? '已录入' : '未录入' }}
               </el-tag>
             </template>
           </el-table-column>
           <el-table-column label="操作" width="120" align="center">
             <template #default="{ row }">
-              <el-button 
-                type="primary" 
+              <el-button
+                type="primary"
                 link
                 :disabled="!row.changed"
-                @click="handleSaveScore(row)"
+                @click="handleSaveOne(row)"
               >
                 保存
               </el-button>
@@ -146,16 +129,22 @@
 
 <script setup>
 import { ref, reactive, computed, onMounted } from 'vue'
-import { useRoute } from 'vue-router'
 import { ElMessage, ElMessageBox } from 'element-plus'
-import { teacherApi } from '@/api/teacher'
+import { teacherNewApi } from '@/api/new-api'
 import './style.scss'
 
-const route = useRoute()
 const loading = ref(false)
-const selectedCourse = ref(null)
-const courseList = ref([])
+const loadingSections = ref(false)
+const selectedSection = ref(null)
+const sectionList = ref([])
 const studentList = ref([])
+
+// 安全获取 teacherId
+const getTeacherId = () => {
+  const tid = localStorage.getItem('teacherId')
+  if (tid) return parseInt(tid, 10)
+  return null
+}
 
 // 统计数据
 const stats = reactive({
@@ -166,69 +155,81 @@ const stats = reactive({
 })
 
 // 是否有未保存的更改
-const hasChanges = computed(() => 
+const hasChanges = computed(() =>
   studentList.value.some(student => student.changed)
 )
 
-// 获取课程列表
-const fetchCourses = async () => {
-  try {
-    loading.value = true
-    const teacherId = localStorage.getItem('uid')
-    const res = await teacherApi.getCoursesByTeacherId(teacherId)
-    
-    if (res && res.data) {
-      // 获取每个课程的选课人数和成绩信息
-      const scorePromises = res.data.map(course =>
-        teacherApi.getScoresByCourseId(course.id)
-      )
-      
-      const scoreResults = await Promise.all(scorePromises)
-      
-      courseList.value = res.data.map((course, index) => {
-        const scores = scoreResults[index].data || []
-        return {
-          ...course,
-          selectedCount: scores.length,
-          gradesEntered: scores.some(score => score.score > 0)
-        }
-      })
+// 计算总评成绩（平时30% + 考试70%）
+const computeFinalScore = (row) => {
+  const usual = row.usualScore || 0
+  const exam = row.examScore || 0
+  if (row.hasScore && row.finalScore !== undefined && row.finalScore !== null) {
+    return row.finalScore.toFixed(1)
+  }
+  return ((usual * 0.3 + exam * 0.7)).toFixed(1)
+}
 
-      // 如果URL中有courseId，自动选择对应课程
-      const courseId = route.query.courseId
-      if (courseId) {
-        const course = courseList.value.find(c => c.id === parseInt(courseId))
-        if (course) {
-          handleSelectCourse(course)
-        }
-      }
+// 获取教师教学班列表
+const fetchSections = async () => {
+  try {
+    loadingSections.value = true
+    const teacherId = getTeacherId()
+    const res = await teacherNewApi.getSections(teacherId)
+
+    if (res && res.data) {
+      sectionList.value = res.data.map(s => ({
+        ...s,
+        id: s.sectionId || s.id,
+        hasScore: s.gradedCount > 0
+      }))
     }
   } catch (error) {
-    console.error('获取课程列表失败:', error)
-    ElMessage.error('获取课程列表失败')
+    console.error('获取教学班列表失败:', error)
+    ElMessage.error('获取教学班列表失败')
+  } finally {
+    loadingSections.value = false
+  }
+}
+
+// 获取教学班成绩汇总
+const fetchSectionScores = async (sectionId) => {
+  try {
+    loading.value = true
+    const teacherId = getTeacherId()
+    const res = await teacherNewApi.getSectionScores(sectionId, teacherId)
+
+    if (res && res.data) {
+      const data = res.data
+      // 先获取学生名单
+      await fetchStudents(sectionId)
+    }
+  } catch (error) {
+    console.error('获取成绩汇总失败:', error)
+    ElMessage.error('获取成绩汇总失败')
   } finally {
     loading.value = false
   }
 }
 
-// 获取学生成绩列表
-const fetchStudentGrades = async (courseId) => {
+// 获取教学班学生名单
+const fetchStudents = async (sectionId) => {
   try {
     loading.value = true
-    const res = await teacherApi.getScoresByCourseId(courseId)
-    
+    const teacherId = getTeacherId()
+    const res = await teacherNewApi.getStudents(sectionId, teacherId)
+
     if (res && res.data) {
-      studentList.value = res.data.map(score => ({
-        ...score,
+      studentList.value = res.data.map(s => ({
+        ...s,
         changed: false,
-        originalScore: score.score
+        originalUsualScore: s.usualScore || 0,
+        originalExamScore: s.examScore || 0
       }))
-      
       updateStats()
     }
   } catch (error) {
-    console.error('获取成绩列表失败:', error)
-    ElMessage.error('获取成绩列表失败')
+    console.error('获取学生名单失败:', error)
+    ElMessage.error('获取学生名单失败')
   } finally {
     loading.value = false
   }
@@ -236,54 +237,33 @@ const fetchStudentGrades = async (courseId) => {
 
 // 更新统计数据
 const updateStats = () => {
-  const scores = studentList.value.map(student => student.score).filter(score => score > 0)
-  if (scores.length === 0) {
-    Object.assign(stats, {
-      average: 0,
-      passRate: 0,
-      excellentRate: 0,
-      highest: 0
+  const scores = studentList.value
+    .map(s => {
+      const finalScore = s.hasScore && s.finalScore !== undefined
+        ? s.finalScore
+        : ((s.usualScore || 0) * 0.3 + (s.examScore || 0) * 0.7)
+      return finalScore
     })
+    .filter(s => s > 0)
+
+  if (scores.length === 0) {
+    Object.assign(stats, { average: 0, passRate: 0, excellentRate: 0, highest: 0 })
     return
   }
-  
-  stats.average = scores.reduce((sum, score) => sum + score, 0) / scores.length
-  stats.passRate = (scores.filter(score => score >= 60).length / scores.length) * 100
-  stats.excellentRate = (scores.filter(score => score >= 90).length / scores.length) * 100
+
+  stats.average = scores.reduce((sum, s) => sum + s, 0) / scores.length
+  stats.passRate = (scores.filter(s => s >= 60).length / scores.length) * 100
+  stats.excellentRate = (scores.filter(s => s >= 90).length / scores.length) * 100
   stats.highest = Math.max(...scores)
 }
 
-// 获取容量标签类型
-const getCapacityTagType = (selected, limit) => {
-  const percentage = selected / limit
-  if (percentage >= 0.9) return 'danger'
-  if (percentage >= 0.7) return 'warning'
-  return 'success'
+// 选择教学班
+const handleSelectSection = (section) => {
+  selectedSection.value = section
+  fetchStudents(section.id)
 }
 
-// 获取成绩标签类型
-const getScoreTagType = (score) => {
-  if (!score) return 'info'
-  if (score >= 90) return 'success'
-  if (score >= 60) return 'warning'
-  return 'danger'
-}
-
-// 获取成绩状态文本
-const getScoreStatus = (score) => {
-  if (!score) return '未录入'
-  if (score >= 90) return '优秀'
-  if (score >= 60) return '及格'
-  return '不及格'
-}
-
-// 选择课程
-const handleSelectCourse = (course) => {
-  selectedCourse.value = course
-  fetchStudentGrades(course.id)
-}
-
-// 返回课程列表
+// 返回教学班列表
 const handleBack = () => {
   if (hasChanges.value) {
     ElMessageBox.confirm(
@@ -295,35 +275,42 @@ const handleBack = () => {
         type: 'warning'
       }
     ).then(() => {
-      selectedCourse.value = null
+      selectedSection.value = null
       studentList.value = []
     }).catch(() => {})
   } else {
-    selectedCourse.value = null
+    selectedSection.value = null
     studentList.value = []
   }
 }
 
 // 处理成绩变化
 const handleScoreChange = (student) => {
-  student.changed = student.score !== student.originalScore
+  student.changed =
+    (student.usualScore || 0) !== student.originalUsualScore ||
+    (student.examScore || 0) !== student.originalExamScore
   updateStats()
 }
 
 // 保存单个学生成绩
-const handleSaveScore = async (student) => {
+const handleSaveOne = async (student) => {
   try {
-    const res = await teacherApi.updateScore({
-      courseId: selectedCourse.value.id,
-      studentId: student.studentId,
-      score: student.score
-    })
-    if (res.status === 200) {
+    const teacherId = getTeacherId()
+    const res = await teacherNewApi.saveScore(
+      student.enrollmentId,
+      teacherId,
+      student.usualScore || 0,
+      student.examScore || 0
+    )
+    if (res && (res.status === 200 || res.code === 200)) {
       student.changed = false
-      student.originalScore = student.score
+      student.originalUsualScore = student.usualScore || 0
+      student.originalExamScore = student.examScore || 0
+      student.hasScore = true
       ElMessage.success('保存成功')
+      updateStats()
     } else {
-      ElMessage.warning(res.msg || '保存失败')
+      ElMessage.warning(res?.msg || '保存失败')
     }
   } catch (error) {
     console.error('保存成绩失败:', error)
@@ -334,31 +321,35 @@ const handleSaveScore = async (student) => {
 // 保存所有更改
 const handleSaveAll = async () => {
   try {
-    const changedStudents = studentList.value.filter(student => student.changed)
-    const savePromises = changedStudents.map(student => 
-      teacherApi.updateScore({
-        courseId: selectedCourse.value.id,
-        studentId: student.studentId,
-        score: student.score
-      })
+    const changedStudents = studentList.value.filter(s => s.changed)
+    const teacherId = getTeacherId()
+    const savePromises = changedStudents.map(s =>
+      teacherNewApi.saveScore(
+        s.enrollmentId,
+        parseInt(teacherId),
+        s.usualScore || 0,
+        s.examScore || 0
+      )
     )
-    
+
     await Promise.all(savePromises)
-    
-    studentList.value.forEach(student => {
-      student.changed = false
-      student.originalScore = student.score
+
+    studentList.value.forEach(s => {
+      s.changed = false
+      s.originalUsualScore = s.usualScore || 0
+      s.originalExamScore = s.examScore || 0
+      s.hasScore = true
     })
-    
     ElMessage.success('全部保存成功')
+    updateStats()
   } catch (error) {
     console.error('保存成绩失败:', error)
-    ElMessage.error('保存失败')
+    ElMessage.error('部分保存失败，请重试')
   }
 }
 
 // 初始化
 onMounted(() => {
-  fetchCourses()
+  fetchSections()
 })
-</script> 
+</script>
