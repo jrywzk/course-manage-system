@@ -66,7 +66,7 @@
 
 <script setup>
 import { ref, reactive, onMounted, watch } from 'vue'
-import { studentApi } from '@/api/student'
+import { enrollmentApi, sectionApi } from '@/api/new-api'
 import './style.scss'
 
 // 统计数据
@@ -88,97 +88,71 @@ const courseCanvas = ref(null)
 const creditCanvas = ref(null)
 const gpaCanvas = ref(null)
 
-// 获取统计数据
+// 安全获取 studentId
+const getStudentId = () => {
+  const sid = localStorage.getItem('studentId')
+  if (sid) return parseInt(sid, 10)
+  return null
+}
+
+// 获取统计数据（使用新版 enrollments 接口）
 const fetchStats = async () => {
   try {
-    const studentId = localStorage.getItem('uid')
-    
-    // 获取所有课程
-    const allCoursesRes = await studentApi.getAllCourses()
-    stats.totalCourses = allCoursesRes.data?.length || 0
-    
-    // 获取学生成绩
-    const res = await studentApi.getScoreByStudentId(studentId)
-    
-    if (res && res.data) {
-      // 获取课程详细信息
-      const coursePromises = res.data.map(score => 
-        studentApi.getCourseById(score.courseId)
-      )
-      const courseResults = await Promise.all(coursePromises)
-      
-      // 计算统计数据
-      const courses = courseResults.map((courseRes, index) => ({
-        ...courseRes.data,
-        score: res.data[index].score
-      }))
-      
-      stats.selectedCourses = courses.length
-      
-      // 计算已修学分（通过的课程学分之和）
-      const passedCourses = courses.filter(course => course.score >= 60)
-      stats.earnedCredits = passedCourses.reduce((sum, course) => sum + course.credit, 0)
-      
-      // 计算GPA
-      stats.gpa = studentApi.calculateGPA(courses)
-      
-      // 计算GPA变化（如果有上学期数据）
-      const lastTermGPA = await getLastTermGPA(studentId)
-      stats.gpaChange = stats.gpa - lastTermGPA
+    const studentId = getStudentId()
+    if (!studentId) { console.warn('未获取到 studentId'); return }
+
+    // 新版：获取所有教学班 + 我的选课
+    const [sectionsRes, enrollRes] = await Promise.all([
+      sectionApi.getSections({ page: 1, pageSize: 100 }),
+      enrollmentApi.getMyEnrollments(studentId)
+    ])
+
+    // 全部教学班数量
+    const allSections = sectionsRes?.data?.list || sectionsRes?.data || []
+    stats.totalCourses = Array.isArray(allSections) ? allSections.length : (allSections.total || 0)
+
+    // 已选课程（从 enrollments）
+    const enrollments = enrollRes?.data || []
+    const enrolledList = Array.isArray(enrollments) ? enrollments : []
+
+    stats.selectedCourses = enrolledList.length
+
+    // 计算已修学分（通过的课程）
+    const passedEnrolls = enrolledList.filter(e => e.isPassed === 1 || e.isPassed === true)
+    stats.earnedCredits = passedEnrolls.reduce((sum, e) => sum + (e.credit || 0), 0)
+
+    // 计算 GPA（根据绩点）
+    const gpaEnrolls = enrolledList.filter(e => e.gpaPoint != null && e.gpaPoint !== undefined)
+    if (gpaEnrolls.length > 0) {
+      const totalGpa = gpaEnrolls.reduce((sum, e) => sum + (e.gpaPoint || 0), 0)
+      stats.gpa = totalGpa / gpaEnrolls.length
+    } else {
+      stats.gpa = 0
     }
+    stats.gpaChange = 0 // 新版暂无上学期对比
   } catch (error) {
     console.error('获取统计数据失败:', error)
   }
 }
 
-// 获取上学期GPA
-const getLastTermGPA = async (studentId) => {
-  try {
-    const currentTerm = '2023-2' // TODO: 动态获取当前学期
-    const lastTerm = '2023-1'    // TODO: 动态计算上学期
-    
-    const res = await studentApi.getScoreByStudentIdAndTerm(studentId, lastTerm)
-    if (res && res.data) {
-      // 获取课程详细信息
-      const coursePromises = res.data.map(score => 
-        studentApi.getCourseById(score.courseId)
-      )
-      const courseResults = await Promise.all(coursePromises)
-      
-      const lastTermCourses = courseResults.map((courseRes, index) => ({
-        ...courseRes.data,
-        score: res.data[index].score
-      }))
-      
-      return studentApi.calculateGPA(lastTermCourses)
-    }
-    return 0
-  } catch (error) {
-    console.error('获取上学期GPA失败:', error)
-    return 0
-  }
-}
-
-// 获取近期课程
+// 获取近期课程（使用新版 enrollments 接口）
 const fetchRecentCourses = async () => {
   try {
     loading.value = true
-    const studentId = localStorage.getItem('uid')
-    const res = await studentApi.getScoreByStudentId(studentId)
-    
-    if (res && res.data) {
-      // 获取课程详细信息
-      const coursePromises = res.data.map(score => 
-        studentApi.getCourseById(score.courseId)
-      )
-      const courseResults = await Promise.all(coursePromises)
-      
-      // 合并课程信息
-      recentCourses.value = courseResults.map(courseRes => ({
-        ...courseRes.data,
-        status: 'active' // TODO: 根据实际情况设置状态
-      })).slice(0, 5) // 只显示最近5门课程
-    }
+    const studentId = getStudentId()
+    if (!studentId) return
+
+    const enrollRes = await enrollmentApi.getMyEnrollments(studentId)
+    const enrollments = enrollRes?.data || []
+    const enrolledList = Array.isArray(enrollments) ? enrollments : []
+
+    recentCourses.value = enrolledList.slice(0, 5).map(e => ({
+      term: e.semester || '',
+      name: e.courseName || '',
+      teacherName: e.teacherName || '',
+      credit: e.credit || 0,
+      status: e.status === 1 ? 'active' : 'inactive'
+    }))
   } catch (error) {
     console.error('获取课程列表失败:', error)
   } finally {

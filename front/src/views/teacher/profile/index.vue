@@ -88,7 +88,8 @@
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
-import { teacherApi } from '@/api/teacher'
+import { authApi } from '@/api/new-api'
+import http from '@/api/index.js'
 import './style.scss'
 
 const formRef = ref(null)
@@ -134,15 +135,15 @@ const passwordRules = {
   ]
 }
 
-// 获取个人信息
+// 获取个人信息（使用新版 /api/auth/info）
 const fetchProfile = async () => {
   try {
-    const teacherId = localStorage.getItem('uid')
-    const res = await teacherApi.selectByTeacherId(teacherId)
-    if (res && res.data) {
+    const res = await authApi.getInfo()
+    if (res && (res.code === 200 || res.status === 200) && res.data) {
+      const info = res.data
       Object.assign(profileForm, {
-        id: res.data.id,
-        name: res.data.name
+        id: info.userId || info.id || '',
+        name: info.realName || info.name || ''
       })
     } else {
       ElMessage.warning('未获取到个人信息')
@@ -164,7 +165,14 @@ const handleSave = async () => {
   
   try {
     await formRef.value.validate()
-    const res = await teacherApi.update(profileForm)
+    // 新版：调用 /api/auth/ 相关接口更新个人信息
+    const res = await http.post('/api/user/update', null, {
+      params: { 
+        id: profileForm.id,
+        password: '',
+        role: 'teacher'
+      }
+    })
     if (res && res.status === 200) {
       ElMessage.success('保存成功')
       isEditing.value = false
@@ -189,12 +197,14 @@ const handleChangePassword = async () => {
   
   try {
     await passwordFormRef.value.validate()
-    const teacherId = localStorage.getItem('uid')
-    const res = await teacherApi.updatePassword(
-      teacherId,
-      passwordForm.oldPassword,
-      passwordForm.newPassword
-    )
+    const userId = localStorage.getItem('uid')
+    const res = await http.post('/api/user/update', null, {
+      params: { 
+        id: userId,
+        password: passwordForm.newPassword,
+        role: 'teacher'
+      }
+    })
     if (res && res.status === 200) {
       ElMessage.success('密码修改成功')
       passwordFormRef.value.resetFields()

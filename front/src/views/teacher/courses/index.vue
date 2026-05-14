@@ -2,11 +2,6 @@
   <div class="courses-container">
     <!-- 操作栏 -->
     <div class="action-bar">
-      <el-button type="primary" @click="handleAdd">
-        <el-icon><Plus /></el-icon>
-        添加课程
-      </el-button>
-      
       <div class="search-group">
         <el-input
           v-model="searchKey"
@@ -59,20 +54,9 @@
             </div>
           </template>
         </el-table-column>
-        <el-table-column label="状态" min-width="80" align="center">
-          <template #default="{ row }">
-            <el-tag :type="row.status === 'active' ? 'success' : 'info'">
-              {{ row.status === 'active' ? '进行中' : '未开课' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-        <el-table-column label="操作" min-width="220" fixed="right" align="center">
+        <el-table-column label="操作" min-width="140" fixed="right" align="center">
           <template #default="{ row }">
             <el-button type="primary" link @click="handleGrades(row)">成绩管理</el-button>
-            <el-button type="success" link @click="handleEdit(row)">编辑</el-button>
-            <!-- TODO: 依赖旧 deleteByCourseId 接口，新版接口确认后再启用
-            <el-button type="danger" link @click="handleDelete(row)">删除</el-button>
-            -->
           </template>
         </el-table-column>
       </el-table>
@@ -207,7 +191,7 @@ const fetchCourses = async () => {
         selectedCount: s.enrolledCount || s.selectedCount || 0,
         studentLimit: s.capacityLimit || 0,
         sectionCount: 1,
-        status: 'active'
+        status: s.status  // 使用后端真实 status 字段
       }))
     } else {
       ElMessage.warning(res?.msg || '获取课程列表失败')

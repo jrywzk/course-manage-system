@@ -4,10 +4,14 @@
   }
   
   .stat-card {
+    :deep(.el-card__body) {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
     .stat-content {
       display: flex;
       align-items: center;
-      padding: 20px;
+      padding: 16px 20px;
       
       .stat-icon {
         font-size: 48px;
@@ -44,27 +48,14 @@
     
     .course-detail {
       padding: 20px;
-      background: rgba(255, 255, 255, 0.02);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
   }
   
-  .score-excellent {
-    color: #67C23A;
-    font-weight: bold;
-  }
-  
-  .score-good {
-    color: #409EFF;
-    font-weight: bold;
-  }
-  
-  .score-pass {
-    color: #E6A23C;
-    font-weight: 600;
-  }
-  
-  .score-fail {
-    color: #F56C6C;
-    font-weight: bold;
-  }
+  .score-excellent { color: #67C23A; font-weight: bold; }
+  .score-good { color: #409EFF; font-weight: bold; }
+  .score-pass { color: #E6A23C; font-weight: 600; }
+  .score-fail { color: #F56C6C; font-weight: bold; }
 } 

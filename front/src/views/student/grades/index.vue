@@ -49,65 +49,13 @@
       </el-col>
     </el-row>
 
-    <!-- 成绩列表 -->
-    <el-card class="grade-list" v-loading="loading">
+    <!-- 成绩列表 — 成绩详情表格暂隐藏，等新版接口就绪后恢复 -->
+    <el-card class="grade-list">
       <template #header>
         <div class="card-header">
           <span>成绩详情</span>
-          <div class="header-actions">
-            <el-select v-model="filterForm.term" placeholder="选择学期" clearable>
-              <el-option
-                v-for="item in terms"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-            <el-button type="primary" @click="handleSearch">查询</el-button>
-          </div>
         </div>
       </template>
-
-      <el-table :data="gradeList" style="width: 100%">
-        <el-table-column prop="term" label="学期" min-width="120" />
-        <el-table-column prop="courseId" label="课程代码" min-width="100" />
-        <el-table-column prop="courseName" label="课程名称" min-width="140" />
-        <!-- TODO: 新版 enrollment 接口后替换为 section_code -->
-        <el-table-column label="教学班编号" min-width="110">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="credit" label="学分" width="70" align="center" />
-        <!-- TODO: 新版成绩接口拆为平时/考试/总评 -->
-        <el-table-column label="平时成绩" width="90" align="center">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column label="考试成绩" width="90" align="center">
-          <template #default>
-            <span class="text-placeholder">—</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="score" label="总评成绩" width="100" align="center">
-          <template #default="{ row }">
-            <span :class="getGradeClass(row.score)">{{ row.score }}</span>
-          </template>
-        </el-table-column>
-        <el-table-column prop="gpa" label="绩点" width="70" align="center">
-          <template #default="{ row }">
-            {{ studentApi.getGradePoint(row.score).toFixed(1) }}
-          </template>
-        </el-table-column>
-        <el-table-column label="是否通过" width="90" align="center">
-          <template #default="{ row }">
-            <el-tag :type="(row.score || 0) >= 60 ? 'success' : 'danger'" size="small">
-              {{ (row.score || 0) >= 60 ? '通过' : '未通过' }}
-            </el-tag>
-          </template>
-        </el-table-column>
-      </el-table>
     </el-card>
   </div>
 </template>
@@ -116,7 +64,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage } from 'element-plus'
 import { ArrowUp, ArrowDown } from '@element-plus/icons-vue'
-import { studentApi } from '@/api/student'
+import { enrollmentApi } from '@/api/new-api'
 import './style.scss'
 
 // 统计数据
@@ -152,6 +100,13 @@ const loading = ref(false)
 // 格式化进度
 const format = (percentage) => `${stats.totalCredits}/${stats.requiredCredits}`
 
+// 安全获取 studentId
+const getStudentId = () => {
+  const sid = localStorage.getItem('studentId')
+  if (sid) return parseInt(sid, 10)
+  return null
+}
+
 // 获取成绩样式
 const getGradeClass = (grade) => {
   if (grade >= 90) return 'grade-excellent'
@@ -160,46 +115,53 @@ const getGradeClass = (grade) => {
   return 'grade-fail'
 }
 
-// 获取成绩列表
+// 获取成绩列表（使用新版 enrollments 接口）
 const fetchGrades = async () => {
   try {
     loading.value = true
-    const studentId = localStorage.getItem('uid')
-    let res
-    
-    if (filterForm.term) {
-      res = await studentApi.getScoreByStudentIdAndTerm(studentId, filterForm.term)
-    } else {
-      res = await studentApi.getScoreByStudentId(studentId)
+    const studentId = getStudentId()
+    if (!studentId) {
+      ElMessage.error('未获取到学生信息，请重新登录')
+      return
     }
-    
-    if (res.data) {
-      // 获取课程详细信息
-      const coursePromises = res.data.map(score => 
-        studentApi.getCourseById(score.courseId)
-      )
-      const courseResults = await Promise.all(coursePromises)
-      
-      // 合并课程信息和成绩信息
-      gradeList.value = res.data.map((score, index) => ({
-        ...score,
-        courseName: courseResults[index].data.name,
-        credit: courseResults[index].data.credit
-      }))
 
-      // 更新统计信息
-      stats.totalCourses = gradeList.value.length
-      stats.passedCourses = gradeList.value.filter(grade => grade.score >= 60).length
-      stats.excellentCourses = gradeList.value.filter(grade => grade.score >= 90).length
-      stats.passRate = (stats.passedCourses / stats.totalCourses) * 100
-      stats.excellentRate = (stats.excellentCourses / stats.totalCourses) * 100
-      stats.totalCredits = gradeList.value.reduce((sum, grade) => 
-        grade.score >= 60 ? sum + grade.credit : sum, 0
-      )
-      stats.gpa = studentApi.calculateGPA(gradeList.value)
-      // TODO: 计算GPA变化
-      stats.gpaChange = 0.2
+    const res = await enrollmentApi.getMyEnrollments(studentId, { status: '' })
+    const enrollments = res?.data || []
+    const enrolledList = Array.isArray(enrollments) ? enrollments : []
+
+    // 按学期筛选
+    let filtered = enrolledList
+    if (filterForm.term) {
+      filtered = enrolledList.filter(e => e.semester === filterForm.term)
     }
+
+    gradeList.value = filtered.map(e => ({
+      id: e.enrollmentId,
+      term: e.semester || '',
+      courseId: e.courseCode || '',
+      courseName: e.courseName || '',
+      sectionCode: e.sectionCode || '',
+      credit: e.credit || 0,
+      usualScore: e.usualScore ?? null,
+      examScore: e.examScore ?? null,
+      score: e.finalScore ?? null,
+      gpa: e.gpaPoint ?? null,
+      isPassed: e.isPassed
+    }))
+
+    // 更新统计信息
+    const hasScore = gradeList.value.filter(g => g.score != null)
+    stats.totalCourses = gradeList.value.length
+    stats.passedCourses = hasScore.filter(g => g.score >= 60).length
+    stats.excellentCourses = hasScore.filter(g => g.score >= 90).length
+    stats.passRate = gradeList.value.length > 0 ? (stats.passedCourses / gradeList.value.length) * 100 : 0
+    stats.excellentRate = gradeList.value.length > 0 ? (stats.excellentCourses / gradeList.value.length) * 100 : 0
+    stats.totalCredits = hasScore.filter(g => g.score >= 60).reduce((sum, g) => sum + (g.credit || 0), 0)
+
+    // GPA：后端直接返回 gpaPoint
+    const gpaList = hasScore.filter(g => g.gpa != null)
+    stats.gpa = gpaList.length > 0 ? gpaList.reduce((sum, g) => sum + (g.gpa || 0), 0) / gpaList.length : 0
+    stats.gpaChange = 0
   } catch (error) {
     console.error('获取成绩列表失败:', error)
     ElMessage.error('获取成绩列表失败')

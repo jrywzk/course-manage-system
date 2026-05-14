@@ -51,7 +51,7 @@
       <el-table :data="courseList" style="width: 100%">
         <el-table-column prop="name" label="课程名称" min-width="180" />
         <el-table-column prop="credit" label="学分" width="80" align="center" />
-        <el-table-column prop="studentLimit" label="选课人数" width="100" align="center">
+        <el-table-column label="选课人数" width="110" align="center">
           <template #default="{ row }">
             <el-tag :type="getCapacityTagType(row.selectedCount, row.studentLimit)">
               {{ row.selectedCount }}/{{ row.studentLimit }}
@@ -60,12 +60,12 @@
         </el-table-column>
         <el-table-column label="成绩录入" width="100" align="center">
           <template #default="{ row }">
-            <el-tag :type="row.gradesEntered ? 'success' : 'warning'">
-              {{ row.gradesEntered ? '已录入' : '未录入' }}
+            <el-tag :type="getGradeStatusTag(row)">
+              {{ getGradeStatusText(row) }}
             </el-tag>
           </template>
         </el-table-column>
-        <el-table-column label="操作" width="200" align="center">
+        <el-table-column label="操作" width="140" align="center">
           <template #default="{ row }">
             <el-button 
               type="primary" 
@@ -73,13 +73,6 @@
               @click="handleGrades(row)"
             >
               成绩管理
-            </el-button>
-            <el-button 
-              type="success" 
-              link
-              @click="handleEdit(row)"
-            >
-              编辑
             </el-button>
           </template>
         </el-table-column>
@@ -115,42 +108,83 @@ const courseCanvas = ref(null)
 const studentCanvas = ref(null)
 const gradeCanvas = ref(null)
 
-// 获取教师课程数据
+// 安全获取 enrolledCount
+const getEnrolledCount = (s) => s.totalStudents || s.enrolledCount || s.selectedCount || 0
+
+// 成绩录入状态：三态 — 待录入 / 录入中 / 已录入
+const getGradeStatusText = (row) => {
+  const graded = row.gradedCount || 0
+  const total = getEnrolledCount(row)
+  if (total === 0 || graded === 0) return '待录入'
+  if (graded >= total) return '已录入'
+  return '录入中'
+}
+
+const getGradeStatusTag = (row) => {
+  const graded = row.gradedCount || 0
+  const total = getEnrolledCount(row)
+  if (total === 0 || graded === 0) return 'warning'
+  if (graded >= total) return 'success'
+  return ''
+}
+
+// 获取教师课程数据（含成绩统计）
 const fetchTeacherData = async () => {
   try {
     loading.value = true
     const teacherId = localStorage.getItem('teacherId')
     if (!teacherId) return
     const res = await teacherNewApi.getSections(parseInt(teacherId, 10))
-    
+
     if (res && res.data) {
-      courseList.value = res.data.map(section => ({
-        ...section,
-        id: section.id,
-        name: section.courseName || section.sectionCode,
-        credit: section.credit || 0,
-        selectedCount: section.totalStudents || 0,
-        studentLimit: section.studentLimit || section.totalStudents || 0,
-        gradesEntered: section.gradedCount > 0
-      }))
-      
+      // 为每个 section 获取成绩统计
+      const sectionsRaw = await Promise.all(
+        res.data.map(async (section) => {
+          const sectionId = section.sectionId || section.id
+          let gradedCount = section.gradedCount || 0
+          let averageScore = section.averageScore || 0
+          let passedCount = section.passedCount || 0
+          try {
+            const scoreRes = await teacherNewApi.getSectionScores(sectionId, parseInt(teacherId, 10))
+            if (scoreRes && (scoreRes.status === 200 || scoreRes.code === 200) && scoreRes.data) {
+              const sc = scoreRes.data
+              gradedCount = sc.gradedCount || gradedCount
+            }
+          } catch (_) { /* 忽略单个失败 */ }
+          return {
+            ...section,
+            id: sectionId,
+            name: section.courseName || section.sectionCode,
+            credit: section.credit || 0,
+            selectedCount: section.enrolledCount || section.selectedCount || 0,
+            studentLimit: section.capacityLimit || section.selectedCount || 0,
+            gradedCount,
+            gradesEntered: gradedCount > 0
+          }
+        })
+      )
+      courseList.value = sectionsRaw
+
       // 更新统计数据
       let totalStudents = 0
       let totalScore = 0
       let passedCount = 0
       let scoreCount = 0
-      
+
       courseList.value.forEach(section => {
-        totalStudents += (section.totalStudents || 0)
-        const avgScore = section.averageScore || 0
-        const passCount = section.passedCount || 0
-        if (avgScore > 0) {
-          totalScore += avgScore * (section.totalStudents || 0)
-          scoreCount += (section.totalStudents || 0)
-          passedCount += passCount
+        const enrolled = section.enrolledCount || section.selectedCount || 0
+        const graded = section.gradedCount || 0
+        totalStudents += enrolled
+
+        const sectionAvg = section.averageScore || 0
+        const sectionPassed = section.passedCount || 0
+        if (graded > 0 && sectionAvg >= 0) {
+          totalScore += sectionAvg * graded
+          scoreCount += graded
+          passedCount += (sectionPassed || 0)
         }
       })
-      
+
       stats.totalCourses = courseList.value.length
       stats.currentTermCourses = courseList.value.length
       stats.totalStudents = totalStudents
