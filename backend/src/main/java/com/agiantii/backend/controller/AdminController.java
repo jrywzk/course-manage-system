@@ -15,8 +15,9 @@ import javax.annotation.Resource;
 import java.util.List;
 
 @Slf4j
-@RestController
-@RequestMapping("/admin")
+// 已废弃 旧版管理员控制器 已从Spring容器移除 管理功能迁移到新架构
+// @RestController
+// @RequestMapping("/admin")
 public class AdminController {
     @Resource
     private AdminMapper adminMapper;
@@ -28,7 +29,7 @@ public class AdminController {
         User user = new User();
         user.setRole(Constant.ROLE_ADMIN);
         user.setPassword(password);
-        user.setId(admin.getId());
+        user.setId(admin.getAdminId());
 
         try{
             adminMapper.insertAdmin(admin);

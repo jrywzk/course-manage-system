@@ -1,6 +1,9 @@
 <template>
   <el-container class="layout-container">
     <el-aside width="200px">
+      <div class="sidebar-logo">
+        <AppLogo small />
+      </div>
       <el-menu
         :default-active="activeMenu"
         class="sidebar-menu"
@@ -55,6 +58,7 @@
 import { computed } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 import { HomeFilled, Collection, Document, User } from '@element-plus/icons-vue'
+import AppLogo from '@/components/AppLogo.vue'
 
 const route = useRoute()
 const router = useRouter()
@@ -64,8 +68,12 @@ const activeMenu = computed(() => route.path)
 
 const handleCommand = (command) => {
   if (command === 'logout') {
+    localStorage.removeItem('token')
     localStorage.removeItem('uid')
     localStorage.removeItem('role')
+    localStorage.removeItem('teacherId')
+    localStorage.removeItem('username')
+    localStorage.removeItem('realName')
     router.push('/login')
   } else if (command === 'profile') {
     router.push('/teacher/profile')
@@ -76,9 +84,19 @@ const handleCommand = (command) => {
 <style lang="scss" scoped>
 .layout-container {
   height: 100vh;
+  gap: 8px;
+  padding: 8px 8px 0 0;
+  
+  .sidebar-logo {
+    display: flex;
+    justify-content: center;
+    align-items: center;
+    padding: 18px 0 10px;
+    border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+  }
   
   .sidebar-menu {
-    height: 100%;
+    height: calc(100% - 90px);
     border-right: 1px solid rgba(255, 255, 255, 0.1);
   }
   
@@ -87,8 +105,10 @@ const handleCommand = (command) => {
     justify-content: space-between;
     align-items: center;
     height: 100%;
+    width: 100%;
     padding: 0 20px;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    box-sizing: border-box;
     
     h2 {
       margin: 0;

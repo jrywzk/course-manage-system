@@ -8,8 +8,7 @@
     
     <el-card class="login-card">
       <template #header>
-        <h2>学生选课管理系统</h2>
-        <div class="sub-title">Student Course Management System</div>
+        <AppLogo landing class="login-logo" />
       </template>
       
       <el-form 
@@ -17,13 +16,13 @@
         :rules="rules" 
         ref="loginFormRef"
         v-loading="loading"
-        element-loading-text="登录中..."
+        element-loading-text="正在登录..."
         element-loading-background="rgba(0, 0, 0, 0.5)"
       >
         <el-form-item prop="username">
           <el-input 
             v-model="loginForm.username"
-            placeholder="请输入学号/工号"
+            placeholder="请输入学号 / 工号"
             prefix-icon="User"
             :input-style="{ color: '#fff' }"
             :disabled="loading"
@@ -34,7 +33,7 @@
           <el-input 
             v-model="loginForm.password"
             type="password"
-            placeholder="密码"
+            placeholder="请输入密码"
             prefix-icon="Lock"
             show-password
             :input-style="{ color: '#fff' }"
@@ -48,14 +47,16 @@
           @click="handleLogin"
           :loading="loading"
         >
-          <span class="button-text">{{ loading ? '登录中...' : '登录' }}</span>
+          <span class="button-text">{{ loading ? '正在登录...' : '登 录' }}</span>
           <el-icon class="button-icon" v-if="!loading"><ArrowRight /></el-icon>
         </el-button>
       </el-form>
       
       <div class="demo-info">
-        <p>管理员账号: 1</p>
-        <p>管理员密码: 123</p>
+        <p class="demo-title">演示账号（密码均为 123456）</p>
+        <p class="demo-role"><span class="role-tag admin">管理员</span> admin01</p>
+        <p class="demo-role"><span class="role-tag teacher">教师</span> tch001 ~ tch004</p>
+        <p class="demo-role"><span class="role-tag student">学生</span> stu001 ~ stu008</p>
       </div>
     </el-card>
   </div>
@@ -67,6 +68,7 @@ import { useRouter } from 'vue-router'
 import { ElMessage } from 'element-plus'
 import { ArrowRight } from '@element-plus/icons-vue'
 import http from '@/api/index.js'
+import AppLogo from '@/components/AppLogo.vue'
 import './style.scss'
 
 const router = useRouter()
@@ -74,14 +76,13 @@ const loginFormRef = ref(null)
 const loading = ref(false)
 
 const loginForm = reactive({
-  username: '1',
-  password: '123'
+  username: 'stu001',
+  password: '123456'
 })
 
 const rules = {
   username: [
-    { required: true, message: '请输入学号/工号', trigger: 'blur' },
-    { type: 'number', message: '必须为数字', transform: (value) => Number(value) }
+    { required: true, message: '请输入用户名', trigger: 'blur' }
   ],
   password: [{ required: true, message: '请输入密码', trigger: 'blur' }]
 }
@@ -113,18 +114,31 @@ const handleLogin = async () => {
     await loginFormRef.value.validate()
     loading.value = true
     
-    const response = await http.post('/api/user/login', null, {
-      params: {
-        id: parseInt(loginForm.username),
-        password: loginForm.password
-      }
+    const res = await http.post('/api/auth/login', {
+      username: loginForm.username,
+      password: loginForm.password
     })
-
-    if (response.status === 200) {
-      localStorage.setItem('uid', loginForm.username)
-      const role = response.data
+    
+    if (res && (res.code === 200 || res.status === 200) && res.data?.token) {
+      const { token, role, userId, realName, entityId, teacherId, studentId } = res.data
+      localStorage.setItem('token', token)
+      localStorage.setItem('uid', userId)
+      localStorage.setItem('username', loginForm.username)
+      localStorage.setItem('realName', realName || '')
       localStorage.setItem('role', role)
-      
+
+      // 保存 teacherId（教师端接口必须）
+      if (role === 'teacher') {
+        const tid = teacherId || entityId
+        if (tid) localStorage.setItem('teacherId', tid)
+      }
+
+      // 保存 studentId（学生端接口必须）
+      if (role === 'student') {
+        const sid = studentId || entityId
+        if (sid) localStorage.setItem('studentId', sid)
+      }
+
       const routes = {
         student: '/student/dashboard',
         teacher: '/teacher/dashboard',
@@ -133,18 +147,22 @@ const handleLogin = async () => {
 
       if (routes[role]) {
         router.push(routes[role])
-        ElMessage.success('登录成功')
+        ElMessage.success('登录成功，正在跳转...')
       } else {
-        ElMessage.error('无效的用户角色')
+        ElMessage.error('登录失败：无效的用户角色')
         localStorage.removeItem('uid')
         localStorage.removeItem('role')
       }
     } else {
-      ElMessage.error('登录失败')
+      ElMessage.error(res?.msg || res?.message || '登录失败')
     }
   } catch (error) {
     console.error('Login error:', error)
-    ElMessage.error('登录失败，请检查账号密码')
+    const errMsg = error?.response?.data?.message || error?.message || ''
+    ElMessage.error(
+      errMsg.includes('Network Error') ? '无法连接到服务器，请检查后端是否启动' :
+      errMsg || '登录失败，请检查账号和密码是否正确'
+    )
   } finally {
     loading.value = false
   }
@@ -161,7 +179,7 @@ onMounted(() => {
   display: flex;
   justify-content: center;
   align-items: center;
-  background: linear-gradient(135deg, #1a1a2e, #0a0a1a);
+  background: linear-gradient(135deg, #1a1b2e, #12131f);
   position: relative;
   overflow: hidden;
 }
@@ -233,22 +251,19 @@ onMounted(() => {
   :deep(.el-card__header) {
     text-align: center;
     border-bottom: 1px solid rgba(255, 255, 255, 0.1);
+    padding: 24px 20px 16px;
     
-    h2 {
-      margin: 0;
-      color: #fff;
-      font-size: 24px;
-      background: linear-gradient(45deg, #409EFF, #67C23A);
-      -webkit-background-clip: text;
-      -webkit-text-fill-color: transparent;
-      letter-spacing: 2px;
-      margin-bottom: 5px;
+    .login-logo {
+      display: flex;
+      justify-content: center;
+      margin: 0 auto;
     }
     
     .sub-title {
-      font-size: 12px;
-      color: rgba(255, 255, 255, 0.6);
-      letter-spacing: 1px;
+      font-size: 14px;
+      color: rgba(255, 255, 255, 0.55);
+      letter-spacing: 2px;
+      font-weight: 400;
     }
   }
   

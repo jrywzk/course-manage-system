@@ -17,8 +17,11 @@ class ReuqestHttp {
         // 请求拦截器
         this.service.interceptors.request.use(
             config => {
-                // 可以在这里添加请求头等信息
-                // 例如：config.headers['Authorization'] = 'Bearer your-token';
+                // 自动附带 Authorization header
+                const token = localStorage.getItem('token')
+                if (token) {
+                    config.headers['Authorization'] = 'Bearer ' + token
+                }
                 return config;
             },
             error => {
@@ -62,6 +65,9 @@ class ReuqestHttp {
     }
     post(url, data, headers) {
         return this.service.post(url, data, headers)
+    }
+    delete(url, headers) {
+        return this.service.delete(url, headers)
     }
     // download .etc you can add more methods here
 }

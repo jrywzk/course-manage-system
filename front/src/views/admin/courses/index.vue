@@ -10,13 +10,13 @@
 
     <!-- 课程列表 -->
     <el-card class="course-list" v-loading="loading">
-      <el-table :data="courseList" style="width: 100%">
-        <el-table-column prop="id" label="课程代码" width="120" />
-        <el-table-column prop="name" label="课程名称" min-width="180" />
-        <el-table-column prop="credit" label="学分" width="80" align="center" />
-        <el-table-column prop="term" label="开课日期" width="180" />
-        <el-table-column prop="teacherName" label="授课教师" width="120" />
-        <el-table-column prop="studentLimit" label="选课人数" width="120" align="center">
+      <el-table :data="courseList" style="width: 100%" :header-cell-style="{ textAlign: 'center' }">
+        <el-table-column prop="id" label="课程代码" min-width="120" />
+        <el-table-column prop="name" label="课程名称" min-width="160" />
+        <el-table-column prop="credit" label="学分" min-width="80" align="center" />
+        <el-table-column prop="term" label="开课日期" min-width="140" />
+        <el-table-column prop="teacherName" label="授课教师" min-width="120" />
+        <el-table-column prop="studentLimit" label="选课人数" min-width="120" align="center">
           <template #default="{ row }">
             <el-tag :type="getCapacityTagType(row.selectedCount, row.studentLimit)">
               {{ row.selectedCount }}/{{ row.studentLimit }}
@@ -32,6 +32,7 @@
             >
               编辑
             </el-button>
+            <!-- TODO: 依赖旧 deleteByCourseId 接口，新版接口确认后再启用
             <el-button 
               type="danger" 
               link
@@ -39,6 +40,7 @@
             >
               删除
             </el-button>
+            -->
           </template>
         </el-table-column>
       </el-table>
@@ -103,8 +105,8 @@
       </el-form>
       <template #footer>
         <span class="dialog-footer">
-          <el-button @click="dialogVisible = false">取消</el-button>
-          <el-button type="primary" @click="handleSubmit">确定</el-button>
+          <el-button plain @click="dialogVisible = false">取消</el-button>
+          <el-button type="primary" plain @click="handleSubmit">确定</el-button>
         </span>
       </template>
     </el-dialog>
@@ -112,11 +114,10 @@
 </template>
 
 <script setup>
-import { ref, reactive, onMounted } from 'vue'
+import { ref, reactive, onMounted, computed } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Plus } from '@element-plus/icons-vue'
-import { adminApi } from '@/api/admin'
-import { studentApi } from '@/api/student'
+import { adminNewApi } from '@/api/new-api'
 import './style.scss'
 
 const loading = ref(false)
@@ -124,10 +125,18 @@ const dialogVisible = ref(false)
 const dialogType = ref('add')
 const formRef = ref(null)
 
-// 课程列表
+// 课程列表（从 /api/sections 获取）
 const courseList = ref([])
-// 教师列表
-const teacherList = ref([])
+// 教师列表（从 section 数据中提取）
+const teacherList = computed(() => {
+  const map = {}
+  courseList.value.forEach(s => {
+    if (s.teacherId && s.teacherName) {
+      map[s.teacherId] = { id: s.teacherId, name: s.teacherName }
+    }
+  })
+  return Object.values(map)
+})
 
 // 课程表单
 const courseForm = reactive({
@@ -147,23 +156,28 @@ const rules = {
   teacherId: [{ required: true, message: '请选择授课教师', trigger: 'change' }]
 }
 
-// 获取课程列表
+// 获取课程列表（使用 /api/sections）
 const fetchCourses = async () => {
   try {
     loading.value = true
-    const res = await adminApi.getAllCourses()
-    if (res && res.data) {
-      // 获取每个课程的选课人数
-      const scorePromises = res.data.map(course =>
-        studentApi.getScoreByCourseId(course.id)
-      )
-      
-      const scoreResults = await Promise.all(scorePromises)
-      
-      courseList.value = res.data.map((course, index) => ({
-        ...course,
-        selectedCount: scoreResults[index].data?.length || 0
+    const res = await adminNewApi.getAllSections()
+    if (res && (res.status === 200 || res.code === 200)) {
+      const list = res.data?.list || res.data || []
+      courseList.value = list.map(s => ({
+        id: s.sectionId,
+        name: s.courseName,
+        credit: s.credit,
+        term: s.semester,
+        teacherId: s.teacherId || 0,
+        teacherName: s.teacherName || '未分配',
+        studentLimit: s.capacityLimit,
+        selectedCount: s.selectedCount || 0,
+        sectionCode: s.sectionCode,
+        building: s.building,
+        roomNo: s.roomNo
       }))
+    } else {
+      ElMessage.warning('获取课程列表失败')
     }
   } catch (error) {
     console.error('获取课程列表失败:', error)
@@ -173,36 +187,21 @@ const fetchCourses = async () => {
   }
 }
 
-// 获取教师列表
-const fetchTeachers = async () => {
-  try {
-    const res = await adminApi.getAllTeachers()
-    if (res && res.data) {
-      teacherList.value = res.data
-    }
-  } catch (error) {
-    console.error('获取教师列表失败:', error)
-    ElMessage.error('获取教师列表失败')
-  }
-}
-
-// 处理添加课程
+// 处理添加课程（当前后端无新增教学班接口，提示用户）
 const handleAdd = () => {
-  dialogType.value = 'add'
-  Object.assign(courseForm, {
-    name: '',
-    credit: 2,
-    studentLimit: 50,
-    term: '',
-    teacherId: ''
-  })
-  dialogVisible.value = true
+  ElMessage.info('课程添加功能暂不可用，请通过后端管理教学班数据')
 }
 
 // 处理编辑课程
 const handleEdit = (course) => {
   dialogType.value = 'edit'
-  Object.assign(courseForm, course)
+  Object.assign(courseForm, {
+    name: course.name,
+    credit: course.credit,
+    studentLimit: course.studentLimit,
+    term: course.term || '',
+    teacherId: course.teacherId
+  })
   dialogVisible.value = true
 }
 
@@ -210,8 +209,8 @@ const handleEdit = (course) => {
 const handleDelete = async (course) => {
   try {
     await ElMessageBox.confirm(
-      `确定要删除课程"${course.name}"吗？`,
-      '���除确认',
+      `确定要删除课程"${course.name}"(${course.sectionCode})吗？`,
+      '删除确认',
       {
         confirmButtonText: '确定',
         cancelButtonText: '取消',
@@ -219,9 +218,13 @@ const handleDelete = async (course) => {
       }
     )
     
-    await adminApi.deleteCourse(course.id)
-    ElMessage.success('删除成功')
-    fetchCourses()
+    const res = await adminNewApi.deleteCourse(course.id, course.teacherId)
+    if (res && (res.status === 200 || res.code === 200)) {
+      ElMessage.success('删除成功')
+      fetchCourses()
+    } else {
+      ElMessage.warning(res?.msg || '删除失败')
+    }
   } catch (error) {
     if (error !== 'cancel') {
       console.error('删除课程失败:', error)
@@ -236,25 +239,16 @@ const handleSubmit = async () => {
   
   try {
     await formRef.value.validate()
-    
-    if (dialogType.value === 'add') {
-      await adminApi.addCourse(courseForm)
-      ElMessage.success('添加成功')
-    } else {
-      await adminApi.updateCourse(courseForm)
-      ElMessage.success('更新成功')
-    }
-    
+    ElMessage.warning('课程编辑功能暂不可用，请通过后端直接管理数据')
     dialogVisible.value = false
-    fetchCourses()
   } catch (error) {
     console.error('保存课程失败:', error)
-    ElMessage.error('保存失败')
   }
 }
 
 // 获取容量标签类型
 const getCapacityTagType = (selected, limit) => {
+  if (!limit || limit === 0) return 'info'
   const percentage = selected / limit
   if (percentage >= 0.9) return 'danger'
   if (percentage >= 0.7) return 'warning'
@@ -263,7 +257,6 @@ const getCapacityTagType = (selected, limit) => {
 
 // 初始化
 onMounted(async () => {
-  await fetchTeachers()
   await fetchCourses()
 })
 </script> 

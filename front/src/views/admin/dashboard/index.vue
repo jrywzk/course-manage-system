@@ -68,7 +68,7 @@
 
 <script setup>
 import { ref, reactive, onMounted } from 'vue'
-import { adminApi } from '@/api/admin'
+import { adminNewApi } from '@/api/new-api'
 import './style.scss'
 
 // 统计数据
@@ -111,30 +111,18 @@ const recentActivities = ref([
 // 获取统计数据
 const fetchStats = async () => {
   try {
-    // 获取学生数据
-    const studentsRes = await adminApi.getAllStudents()
-    if (studentsRes && studentsRes.data) {
-      stats.totalStudents = studentsRes.data.length
-      // TODO: 计算新增学生数
-      stats.newStudents = 10
+    // 获取教学班汇总数据
+    const sectionsRes = await adminNewApi.getAllSections()
+    if (sectionsRes && (sectionsRes.code === 200 || sectionsRes.status === 200)) {
+      const sections = sectionsRes.data?.list || sectionsRes.data || []
+      stats.totalCourses = sections.length
+      stats.activeCourses = sections.length
+      // TODO: 后续接入统计接口
+      stats.totalStudents = 0
+      stats.totalTeachers = 0
     }
-
-    // 获取教师数据
-    const teachersRes = await adminApi.getAllTeachers()
-    if (teachersRes && teachersRes.data) {
-      stats.totalTeachers = teachersRes.data.length
-      // TODO: 计算新增教师数
-      stats.newTeachers = 2
-    }
-
-    // 获取课程数据
-    const coursesRes = await adminApi.getAllCourses()
-    if (coursesRes && coursesRes.data) {
-      stats.totalCourses = coursesRes.data.length
-      stats.activeCourses = coursesRes.data.filter(
-        course => new Date(course.term) > new Date()
-      ).length
-    }
+    stats.newStudents = 0
+    stats.newTeachers = 0
 
     // TODO: 获取成绩统计数据
     stats.averageScore = 85.5

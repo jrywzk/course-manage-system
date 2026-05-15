@@ -7,21 +7,27 @@ import java.util.List;
 
 @Mapper
 public interface StudentMapper {
-    @Insert("insert into t_student(id,name) values (#{id},#{name})")
+    @Insert("insert into t_student(student_id, student_name) values (#{studentId}, #{studentName})")
     void insertStudent(Student student);
 
-    @Delete(("delete from t_student where id = ${id}"))
-    void deleteStudentById(Integer id);
+    @Delete("delete from t_student where student_id = #{studentId}")
+    void deleteStudentById(Integer studentId);
 
-    @Update("update t_student set name = #{name} where id = #{id}")
+    @Update("update t_student set student_name = #{studentName} where student_id = #{studentId}")
     void updateStudent(Student student);
 
-    @Select("select * from t_student where name like CONCAT('%',#{name},'%')")
-    List<Student> selectByStudentName(@Param("name") String Studentname);
-    // with fuzzy default search
+    @Select("select student_id, student_name from t_student where student_name like CONCAT('%',#{name},'%')")
+    List<Student> selectByStudentName(@Param("name") String studentName);
 
-    @Select("select * from t_student")
+    @Select("select student_id, student_name from t_student")
     List<Student> selectAllStudent();
-    @Select("select * from t_student where id = #{id}")
-    Student selectStudentById(Integer id);
+
+    @Select("select student_id, student_name from t_student where student_id = #{studentId}")
+    Student selectStudentById(Integer studentId);
+
+    @Select("select student_name from t_student where user_id = #{userId}")
+    String selectNameByUserId(@Param("userId") Integer userId);
+
+    @Select("select student_id from t_student where user_id = #{userId}")
+    Integer selectIdByUserId(@Param("userId") Integer userId);
 }

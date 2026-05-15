@@ -4,23 +4,22 @@
   }
   
   .stat-card {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
+    :deep(.el-card__body) {
+      background: rgba(255, 255, 255, 0.03);
+    }
+
     .stat-content {
       display: flex;
       align-items: center;
-      padding: 20px;
+      padding: 16px 20px;
       
       .stat-icon {
         font-size: 48px;
         margin-right: 20px;
         
         .el-icon {
-          background: linear-gradient(45deg, var(--el-color-primary), var(--el-color-success));
-          -webkit-background-clip: text;
-          -webkit-text-fill-color: transparent;
+          color: var(--el-color-primary);
+          font-size: 40px;
         }
       }
       
@@ -41,10 +40,6 @@
   }
   
   .course-list {
-    background: rgba(255, 255, 255, 0.05);
-    backdrop-filter: blur(10px);
-    border: 1px solid rgba(255, 255, 255, 0.1);
-    
     .card-header {
       display: flex;
       justify-content: space-between;
@@ -53,49 +48,14 @@
     
     .course-detail {
       padding: 20px;
-      background: rgba(255, 255, 255, 0.02);
+      background: rgba(255, 255, 255, 0.03);
+      border-radius: 8px;
+      border: 1px solid rgba(255, 255, 255, 0.06);
     }
   }
   
-  :deep(.el-table) {
-    background-color: transparent;
-    
-    th, td {
-      background-color: transparent;
-      transition: background-color 0.3s ease;
-    }
-    
-    th {
-      color: var(--el-text-color-regular);
-      font-weight: 600;
-      background-color: rgba(255, 255, 255, 0.02);
-    }
-    
-    td {
-      color: var(--el-text-color-primary);
-    }
-    
-    tr:hover > td {
-      background-color: rgba(255, 255, 255, 0.05) !important;
-    }
-  }
-  
-  .score-excellent {
-    color: #67C23A;
-    font-weight: bold;
-  }
-  
-  .score-good {
-    color: #409EFF;
-    font-weight: bold;
-  }
-  
-  .score-pass {
-    color: #E6A23C;
-  }
-  
-  .score-fail {
-    color: #F56C6C;
-    font-weight: bold;
-  }
+  .score-excellent { color: #67C23A; font-weight: bold; }
+  .score-good { color: #409EFF; font-weight: bold; }
+  .score-pass { color: #E6A23C; font-weight: 600; }
+  .score-fail { color: #F56C6C; font-weight: bold; }
 } 

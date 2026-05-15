@@ -4,6 +4,8 @@ package com.agiantii.backend.controller;
 import com.agiantii.backend.common.R;
 import com.agiantii.backend.mapper.CourseMapper;
 import com.agiantii.backend.mapper.ScoreMapper;
+// 【新增】下面这行 import 原来没有
+// import com.agiantii.backend.mapper.EnrollmentMapper;
 import com.agiantii.backend.pojo.Score;
 import com.agiantii.backend.pojo.vo.ScoreVo;
 import lombok.extern.slf4j.Slf4j;
@@ -12,16 +14,26 @@ import org.springframework.web.bind.annotation.*;
 import javax.annotation.Resource;
 import java.util.List;
 
-@RestController
-@RequestMapping("/score")
+// 【已废弃】旧版成绩控制器，已从 Spring 容器移除，成绩管理迁移到 ScoreV2Controller
+// @RestController
+// @RequestMapping("/score")
 @Slf4j
 
 public class ScoreController {
     @Resource
     private ScoreMapper scoreMapper;
+      // 【新增】下面这行原来没有
+    // @Resource
+    // private EnrollmentMapper enrollmentMapper;
+    // ================================================================
+    // 【批注】以下 insertScore 方法本质是"选课"逻辑，不是"成绩录入"。
+    //         新版架构中，选课逻辑迁移到 EnrollmentController.insert。
+    //         此方法保留在此仅供对照，实际调用应走 EnrollmentController。
+    // ================================================================
     @Resource
     private CourseMapper courseMapper;
-    @PostMapping("insert")
+  // 【已废弃】旧版选课入口，现已迁移到 EnrollmentController，此端点已下线
+  // @PostMapping("insert")
     public R<String> insertScore(@RequestBody Score score) {
         log.info("insert course : {}",score);
         try{
@@ -43,7 +55,18 @@ public class ScoreController {
             return R.error("insert course error");
         }
     }
-    @GetMapping("deleteByCourseIdAndStudentIdAndTeacherId")
+    // ================================================================
+    // 【批注】以下 deleteScore 方法本质是"退课"逻辑。
+    //         新版架构中，退课逻辑迁移到 EnrollmentController.delete。
+    //         此方法保留在此仅供对照，实际调用应走 EnrollmentController。
+    // ================================================================
+    // 【已废弃】旧版退课入口，现已迁移到 EnrollmentController，此端点已下线
+    // @GetMapping("deleteByCourseIdAndStudentIdAndTeacherId")
+    // 【改动】三个参数都缺少 @RequestParam，Spring MVC 可能无法正确绑定
+    // 原来：Integer courseId,Integer studentId,Integer teacherId
+    // 改成：@RequestParam("courseId") Integer courseId,
+    //       @RequestParam("studentId") Integer studentId,
+    //       @RequestParam("teacherId") Integer teacherId
     public R<String> deleteScore(Integer courseId,Integer studentId,Integer teacherId){
         log.info("delete course courseId:{},studentId:{},teacherId:{}",courseId,studentId,teacherId);
         try{
@@ -54,6 +77,11 @@ public class ScoreController {
             return R.error("delete course error");
         }
     }
+    // ================================================================
+    // 【批注】以下 updateScore 是旧的成绩更新方式（基于 Score.id）。
+    //         新版改为 grade 方法，基于 enrollmentId，自动判断新增/修改。
+    //         此方法保留在此仅供对照。
+    // ================================================================
     @PostMapping("update")
     public R<String> updateScore(@RequestBody Score score) {
         log.info("update course : {}",score);
@@ -65,6 +93,38 @@ public class ScoreController {
             return R.error("update course error");
         }
     }
+    // ================================================================
+    // 【新增】以下 grade 方法原来没有，是全新加的。
+    //         用于成绩录入/修改，依附 enrollment_id 而非旧的 (courseId, studentId, teacherId)。
+    //         自动判断 insert 还是 update。
+    // ================================================================
+    // @PostMapping("grade")
+    // public R<String> grade(@RequestBody Score score,
+    //                         @RequestParam("teacherId") Integer teacherId) {
+    //     log.info("grade score: {}, teacherId: {}", score, teacherId);
+    //     if (score.getEnrollmentId() == null ||
+    //         enrollmentMapper.selectById(score.getEnrollmentId()) == null) {
+    //         return R.error("选课记录不存在");
+    //     }
+    //     try {
+    //         Score existing = scoreMapper.selectByEnrollmentId(score.getEnrollmentId());
+    //         if (existing != null) {
+    //             score.setId(existing.getId());
+    //             scoreMapper.updateByEnrollmentId(score);
+    //             return R.success("成绩修改成功");
+    //         } else {
+    //             scoreMapper.insert(score);
+    //             return R.success("成绩录入成功");
+    //         }
+    //     } catch (Exception e) {
+    //         log.error("grade error: {}", e.getMessage());
+    //         return R.error("成绩录入失败");
+    //     }
+    // }
+    // ================================================================
+    // 【批注】以下查询方法无需改动，已经是最终形态。
+    //         均有 @RequestParam、try-catch、log.error。
+    // ================================================================
     @GetMapping("selectByCourseId")
     public R<List<ScoreVo>> selectScoreByCourseId(@RequestParam("courseId") int courseId) {
         log.info("getScoreByCourseId courseId:{}",courseId);
@@ -96,7 +156,6 @@ public class ScoreController {
         }catch (Exception e) {
             log.error("getScoreByTeacherId error : {}", e.getMessage());
             return R.error("查询成绩 失败");
-
         }
     }
     @GetMapping("selectByTeacherIdAndCourseId")
@@ -121,7 +180,6 @@ public class ScoreController {
             log.error("getScoreByStudentIdAndTerm error : {}", e.getMessage());
             return R.error("查询成绩 失败");
         }
-
     }
     @GetMapping("selectByCourseName")
     public R<List<ScoreVo>> selectScoreByCourseName(@RequestParam("courseName") String courseName) {
@@ -135,5 +193,4 @@ public class ScoreController {
             return R.error("查询成绩 失败");
         }
     }
-
 }

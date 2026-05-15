@@ -15,8 +15,9 @@ import javax.annotation.Resource;
 import java.util.List;
 
 @Slf4j
-@RestController
-@RequestMapping("teacher")
+// 已废弃 旧版教师控制器 已从Spring容器移除 教师功能迁移到新架构
+// @RestController
+// @RequestMapping("teacher")
 public class TeacherController {
     @Resource
     private TeacherMapper teacherMapper;
@@ -25,14 +26,14 @@ public class TeacherController {
 
     @PostMapping("/register")
     public R<String> register(@RequestBody Teacher teacher, @RequestParam(value = "password",defaultValue  ="123") String password){
-        if(userMapper.selectUserById(teacher.getId())!= null){
+        if(userMapper.selectUserById(teacher.getTeacherId())!= null){
             return R.error("该教师已注册");
         }
         log.info("register teacher: {} password:{}" , teacher.toString(),password);
         User user  = new User();
         user.setRole(Constant.ROLE_TEACHER);
         user.setPassword(password);
-        user.setId(teacher.getId());
+        user.setId(teacher.getTeacherId());
 
         try{
             teacherMapper.insert(teacher);
