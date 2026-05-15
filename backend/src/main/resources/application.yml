@@ -62,5 +62,9 @@ knife4j:
           - com.agiantii.backend.controller
     basic-auth:
       name: agiantii
+  documents:
+    - group: default
+      name: 成绩字段补全说明
+      locations: classpath:markdown/*
 
 
