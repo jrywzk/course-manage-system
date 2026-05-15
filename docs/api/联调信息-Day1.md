@@ -102,7 +102,7 @@
   courseCode, courseName, credit,
   teacherName, scheduleText, building, roomNo,
   selectTime, status,
-  hasScore(boolean), finalScore, gpaPoint, isPassed
+  hasScore(boolean), usualScore, examScore, finalScore, gpaPoint, isPassed
   ```
 
 ### 8. GET /api/sections/{sectionId}/students — 教学班学生名单
@@ -110,7 +110,7 @@
   ```
   enrollmentId, studentId, studentNo, studentName,
   gender, majorName, selectTime,
-  hasScore, finalScore, isPassed
+  hasScore, usualScore, examScore, finalScore, isPassed
   ```
 
 ### 9. GET /api/teachers/{teacherId}/sections — 教师授课列表

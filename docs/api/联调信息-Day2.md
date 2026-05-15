@@ -97,7 +97,7 @@ Authorization: Bearer abc...
 3. 教学班归属校验    → section.teacher_id == teacherId? → 否则 403
 ```
 
-**响应字段不变：**
+**响应字段（2026-05-15 更新，新增 usualScore/examScore）：**
 ```json
 {
   "data": [
@@ -110,6 +110,8 @@ Authorization: Bearer abc...
       "majorName": "计算机科学与技术",
       "selectTime": "2025-09-03 09:00:00",
       "hasScore": true,
+      "usualScore": 85.00,
+      "examScore": 82.00,
       "finalScore": 82.90,
       "isPassed": 1
     }
