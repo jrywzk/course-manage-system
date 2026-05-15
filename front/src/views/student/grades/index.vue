@@ -54,21 +54,6 @@
       <template #header>
         <div class="card-header">
           <span>成绩详情</span>
-          <div class="header-actions">
-            <el-select
-              v-model="filterForm.term"
-              placeholder="全部学期"
-              clearable
-              @change="handleSearch"
-            >
-              <el-option
-                v-for="item in terms"
-                :key="item.value"
-                :label="item.label"
-                :value="item.value"
-              />
-            </el-select>
-          </div>
         </div>
       </template>
 
@@ -149,19 +134,6 @@ const stats = reactive({
   excellentCourses: 0
 })
 
-// 学期选项
-const terms = [
-  { label: '2023-2024学年第一学期', value: '2023-1' },
-  { label: '2023-2024学年第二学期', value: '2023-2' },
-  { label: '2022-2023学年第一学期', value: '2022-1' },
-  { label: '2022-2023学年第二学期', value: '2022-2' }
-]
-
-// 筛选表单
-const filterForm = reactive({
-  term: ''
-})
-
 // 成绩列表
 const gradeList = ref([])
 const loading = ref(false)
@@ -198,13 +170,7 @@ const fetchGrades = async () => {
     const enrollments = res?.data || []
     const enrolledList = Array.isArray(enrollments) ? enrollments : []
 
-    // 按学期筛选
-    let filtered = enrolledList
-    if (filterForm.term) {
-      filtered = enrolledList.filter(e => e.semester === filterForm.term)
-    }
-
-    gradeList.value = filtered.map(e => ({
+    gradeList.value = enrolledList.map(e => ({
       id: e.enrollmentId,
       term: e.semester || '',
       courseId: e.courseCode || '',
@@ -237,11 +203,6 @@ const fetchGrades = async () => {
   } finally {
     loading.value = false
   }
-}
-
-// 处理搜索
-const handleSearch = () => {
-  fetchGrades()
 }
 
 // 初始化

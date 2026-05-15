@@ -85,7 +85,7 @@
 import { ref, reactive, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { Calendar, Collection, Clock } from '@element-plus/icons-vue'
-import { studentApi } from '@/api/student'
+import { enrollmentApi } from '@/api/new-api'
 import './style.scss'
 
 // 统计数据
@@ -104,7 +104,7 @@ const fetchCourses = async () => {
     loading.value = true
     const studentId = localStorage.getItem('studentId')
     if (!studentId) { ElMessage.error('未获取到学生信息，请重新登录'); return }
-    const res = await studentApi.getMyEnrollments(studentId)
+    const res = await enrollmentApi.getMyEnrollments(studentId)
     if (res && (res.code === 200 || res.status === 200)) {
       const data = res.data?.list || res.data || []
       courseList.value = data.map(e => ({
@@ -137,7 +137,7 @@ const handleDropCourse = async (course) => {
   if (!course.enrollmentId) { ElMessage.error('缺少选课记录ID'); return }
   try {
     await ElMessageBox.confirm(`确定要退选"${course.courseName}（${course.sectionCode}）"吗？`, '退课确认', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' })
-    const res = await studentApi.deleteEnrollment(course.enrollmentId)
+    const res = await enrollmentApi.drop(course.enrollmentId)
     if (res && (res.code === 200 || res.status === 200)) {
       ElMessage.success(`已退选：${course.courseName}`)
       fetchCourses()

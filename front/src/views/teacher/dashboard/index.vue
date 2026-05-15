@@ -250,11 +250,6 @@ const handleGrades = (course) => {
   router.push(`/teacher/grades?sectionId=${course.id || course.sectionId}`)
 }
 
-// 处理课程编辑
-const handleEdit = (course) => {
-  router.push(`/teacher/courses/edit?sectionId=${course.id || course.sectionId}`)
-}
-
 // 监听数据变化更新图表
 watch(stats, () => {
   initCharts()

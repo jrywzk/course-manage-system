@@ -79,16 +79,6 @@ const router = createRouter({
           }
         },
         {
-          path: 'courses/edit',
-          name: 'TeacherCourseEdit',
-          component: () => import('@/views/teacher/courses/edit.vue'),
-          meta: {
-            title: '编辑课程',
-            requiresAuth: true,
-            role: 'teacher'
-          }
-        },
-        {
           path: 'grades',
           name: 'TeacherGrades',
           component: () => import('@/views/teacher/grades/index.vue'),

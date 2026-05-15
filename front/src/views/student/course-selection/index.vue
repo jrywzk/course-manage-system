@@ -92,7 +92,7 @@
 import { ref, reactive, computed, onMounted } from 'vue'
 import { ElMessage, ElMessageBox } from 'element-plus'
 import { InfoFilled } from '@element-plus/icons-vue'
-import { studentApi } from '@/api/student'
+import { sectionApi, enrollmentApi } from '@/api/new-api'
 import './style.scss'
 
 // 筛选表单
@@ -115,7 +115,7 @@ const selectedCount = computed(() => sectionList.value.filter(s => s.selected).l
 const fetchSections = async () => {
   try {
     loading.value = true
-    const res = await studentApi.getSections({ page: 1, pageSize: 100, status: 1 })
+    const res = await sectionApi.getSections({ page: 1, pageSize: 100, status: 1 })
     if (res && (res.code === 200 || res.status === 200)) {
       const data = res.data?.list || res.data || []
       sectionList.value = data.map(s => ({
@@ -146,7 +146,7 @@ const fetchMySelected = async () => {
   const studentId = localStorage.getItem('studentId')
   if (!studentId) return
   try {
-    const res = await studentApi.getMyEnrollments(studentId)
+    const res = await enrollmentApi.getMyEnrollments(studentId)
     if (res && (res.code === 200 || res.status === 200)) {
       const enrollments = res.data?.list || res.data || []
       const map = {}
@@ -164,7 +164,7 @@ const handleEnroll = async (section) => {
   const studentId = localStorage.getItem('studentId')
   if (!studentId) { ElMessage.error('未获取到学生信息，请重新登录'); return }
   try {
-    const res = await studentApi.createEnrollment(Number(studentId), section.sectionId)
+    const res = await enrollmentApi.enroll(Number(studentId), section.sectionId)
     if (res && (res.code === 200 || res.status === 200) && res.data?.result === 1) {
       section.selected = true; section.enrollmentId = res.data.enrollmentId
       section.selectedCount++; section.remaining--
@@ -183,7 +183,7 @@ const handleDrop = async (section) => {
       '退课确认', { confirmButtonText: '确定', cancelButtonText: '取消', type: 'warning' }
     )
     if (!section.enrollmentId) { ElMessage.error('缺少选课记录ID'); return }
-    const res = await studentApi.deleteEnrollment(section.enrollmentId)
+    const res = await enrollmentApi.drop(section.enrollmentId)
     if (res && (res.code === 200 || res.status === 200)) {
       section.selected = false; section.enrollmentId = null
       section.selectedCount--; section.remaining++
@@ -197,7 +197,7 @@ const handleSearch = async () => {
   if (!filterForm.courseName && !filterForm.teacherName) { await fetchSections(); await fetchMySelected(); return }
   loading.value = true
   try {
-    const res = await studentApi.getSections({ page: 1, pageSize: 200 })
+    const res = await sectionApi.getSections({ page: 1, pageSize: 200 })
     let data = res.data?.list || res.data || []
     if (filterForm.courseName) data = data.filter(s => (s.courseName || '').includes(filterForm.courseName))
     if (filterForm.teacherName) data = data.filter(s => (s.teacherName || '').includes(filterForm.teacherName))
