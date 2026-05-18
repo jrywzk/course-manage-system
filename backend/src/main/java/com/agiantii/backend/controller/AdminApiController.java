@@ -101,7 +101,7 @@ public class AdminApiController {
         body.putIfAbsent("status", 1);
         courseMapper.insertCourse(body);
 
-        Integer newId = (Integer) body.get("id");
+        Integer newId = toInt(body.get("id"));
         Map<String, Object> course = courseMapper.selectByIdForAdmin(newId);
         return R.success(course, "课程新增成功");
     }
@@ -121,6 +121,11 @@ public class AdminApiController {
 
         Map<String, Object> existing = courseMapper.selectByIdForAdmin(id);
         if (existing == null) return R.error("课程不存在", 404);
+
+        // 只更新前端传入的字段，未传字段从已有记录回填
+        for (Map.Entry<String, Object> entry : existing.entrySet()) {
+            body.putIfAbsent(entry.getKey(), entry.getValue());
+        }
 
         body.put("id", id);
         courseMapper.updateCourse(body);
@@ -156,15 +161,21 @@ public class AdminApiController {
     // ==================== 教学班管理 ====================
 
     @GetMapping("/sections")
-    @ApiOperation("管理员-查询教学班列表")
+    @ApiOperation("管理员-查询教学班列表（支持按课程/教师/状态筛选）")
     @ApiImplicitParams({
+            @ApiImplicitParam(name = "courseId", value = "课程ID（可选）", paramType = "query"),
+            @ApiImplicitParam(name = "teacherId", value = "教师ID（可选）", paramType = "query"),
+            @ApiImplicitParam(name = "status", value = "状态 1=运行中 0=已关闭（可选）", paramType = "query"),
             @ApiImplicitParam(name = "Authorization", value = "Bearer {token}", required = true, dataType = "string", paramType = "header")
     })
     public R<List<Map<String, Object>>> listSections(
+            @RequestParam(required = false) Integer courseId,
+            @RequestParam(required = false) Integer teacherId,
+            @RequestParam(required = false) Integer status,
             @RequestHeader(value = "Authorization", required = false) String authHeader) {
         if (requireAdmin(authHeader) == null) return R.error("未登录或非管理员", 401);
-        log.info("GET /admin/sections");
-        List<Map<String, Object>> list = courseSectionMapper.selectAllForAdmin();
+        log.info("GET /admin/sections: courseId={}, teacherId={}, status={}", courseId, teacherId, status);
+        List<Map<String, Object>> list = courseSectionMapper.selectAllForAdmin(courseId, teacherId, status);
         return R.success(list, "成功");
     }
 
@@ -203,7 +214,7 @@ public class AdminApiController {
         body.putIfAbsent("selectedCount", 0);
         courseSectionMapper.insertSection(body);
 
-        Integer newId = (Integer) body.get("sectionId");
+        Integer newId = toInt(body.get("sectionId"));
         Map<String, Object> section = courseSectionMapper.selectByIdForAdmin(newId);
         return R.success(section, "教学班新增成功");
     }
@@ -226,6 +237,11 @@ public class AdminApiController {
 
         String msg = validateSection(body, existing);
         if (msg != null) return R.error(msg, 400);
+
+        // 只更新前端传入的字段，未传字段从已有记录回填
+        for (Map.Entry<String, Object> entry : existing.entrySet()) {
+            body.putIfAbsent(entry.getKey(), entry.getValue());
+        }
 
         body.put("sectionId", id);
         courseSectionMapper.updateSection(body);
@@ -263,9 +279,12 @@ public class AdminApiController {
         if (teacherIdObj == null) return "教师ID不能为空";
         if (classroomIdObj == null) return "教室ID不能为空";
 
-        Integer courseId = toInt(courseIdObj);
-        Integer teacherId = toInt(teacherIdObj);
-        Integer classroomId = toInt(classroomIdObj);
+        Integer courseId = safeInt(courseIdObj);
+        if (courseId == null) return "courseId 格式错误，必须是数字";
+        Integer teacherId = safeInt(teacherIdObj);
+        if (teacherId == null) return "teacherId 格式错误，必须是数字";
+        Integer classroomId = safeInt(classroomIdObj);
+        if (classroomId == null) return "classroomId 格式错误，必须是数字";
 
         if (courseMapper.selectByIdForAdmin(courseId) == null) return "课程不存在";
         if (teacherMapper.selectByTeacherId(teacherId) == null) return "教师不存在";
@@ -274,13 +293,33 @@ public class AdminApiController {
         // capacity > 0
         Object capObj = body.getOrDefault("capacityLimit", existing != null ? existing.get("capacityLimit") : null);
         if (capObj != null) {
-            int cap = toInt(capObj);
+            Integer cap = safeInt(capObj);
+            if (cap == null) return "capacityLimit 格式错误，必须是数字";
             if (cap <= 0) return "容量必须大于0";
             // capacity >= selectedCount
             int selCount = existing != null ? toInt(existing.get("selectedCount")) : 0;
             if (cap < selCount) return "容量不能小于已选人数(" + selCount + ")";
         }
 
+        return null;
+    }
+
+    /**
+     * 安全解析整数，非法输入返回 null（避免抛 500）
+     */
+    private Integer safeInt(Object obj) {
+        if (obj == null) return null;
+        if (obj instanceof Integer) return (Integer) obj;
+        if (obj instanceof Number) return ((Number) obj).intValue();
+        if (obj instanceof String) {
+            String s = ((String) obj).trim();
+            if (s.isEmpty()) return null;
+            try {
+                return Integer.parseInt(s);
+            } catch (NumberFormatException e) {
+                return null;
+            }
+        }
         return null;
     }
 
@@ -352,6 +391,13 @@ public class AdminApiController {
         if (requireAdmin(authHeader) == null) return R.error("未登录或非管理员", 401);
         log.info("PUT /admin/departments/{}: {}", id, department);
         if (departmentMapper.selectById(id) == null) return R.error("院系不存在", 404);
+
+        // 只更新前端传入的字段，未传字段从已有记录回填
+        com.agiantii.backend.pojo.Department existing = departmentMapper.selectById(id);
+        if (department.getDepartmentCode() == null) department.setDepartmentCode(existing.getDepartmentCode());
+        if (department.getDepartmentName() == null) department.setDepartmentName(existing.getDepartmentName());
+        if (department.getOfficePhone() == null) department.setOfficePhone(existing.getOfficePhone());
+
         department.setDepartmentId(id);
         departmentMapper.update(department);
         return R.success(departmentMapper.selectById(id), "院系修改成功");
@@ -450,6 +496,13 @@ public class AdminApiController {
         if (major.getDepartmentId() != null && departmentMapper.selectById(major.getDepartmentId()) == null) {
             return R.error("所属院系不存在", 400);
         }
+
+        // 只更新前端传入的字段，未传字段从已有记录回填
+        com.agiantii.backend.pojo.Major existingMajor = majorMapper.selectById(id);
+        if (major.getDepartmentId() == null) major.setDepartmentId(existingMajor.getDepartmentId());
+        if (major.getMajorCode() == null) major.setMajorCode(existingMajor.getMajorCode());
+        if (major.getMajorName() == null) major.setMajorName(existingMajor.getMajorName());
+
         major.setMajorId(id);
         majorMapper.update(major);
         return R.success(majorMapper.selectByIdWithDept(id), "专业修改成功");
@@ -542,6 +595,14 @@ public class AdminApiController {
         if (requireAdmin(authHeader) == null) return R.error("未登录或非管理员", 401);
         log.info("PUT /admin/classrooms/{}: {}", id, classroom);
         if (classroomMapper.selectById(id) == null) return R.error("教室不存在", 404);
+
+        // 只更新前端传入的字段，未传字段从已有记录回填
+        com.agiantii.backend.pojo.Classroom existingRoom = classroomMapper.selectById(id);
+        if (classroom.getBuilding() == null) classroom.setBuilding(existingRoom.getBuilding());
+        if (classroom.getRoomNo() == null) classroom.setRoomNo(existingRoom.getRoomNo());
+        if (classroom.getCapacity() == null) classroom.setCapacity(existingRoom.getCapacity());
+        if (classroom.getRemark() == null) classroom.setRemark(existingRoom.getRemark());
+
         classroom.setClassroomId(id);
         classroomMapper.update(classroom);
         return R.success(classroomMapper.selectById(id), "教室修改成功");
