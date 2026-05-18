@@ -35,6 +35,7 @@ public class R<T> {
     public static <T> R<T> error(String msg) {
         R<T> r = new R<T>();
         r.msg = msg;
+        r.status = 500;
         return r;
     }
     public static <T> R<T> error(String msg,int code) {

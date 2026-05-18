@@ -5,42 +5,39 @@
   
   .stat-card {
     transition: all 0.3s ease;
-    background-color: #000;
-    border: 1px solid rgba(255, 255, 255, 0.08);
     
     &:hover {
       transform: translateY(-3px);
-      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.25);
+      box-shadow: 0 8px 20px rgba(0, 0, 0, 0.15);
     }
     
     .stat-content {
       padding: 24px 20px;
       text-align: center;
-      color: #fff;
       
       .stat-value {
         font-size: 32px;
         font-weight: bold;
-        color: #fff;
+        color: var(--el-color-primary);
         margin-bottom: 5px;
       }
       
       .stat-label {
         font-size: 14px;
-        color: rgba(255, 255, 255, 0.75);
+        color: var(--el-text-color-secondary);
         margin-bottom: 10px;
       }
       
       .stat-trend {
         font-size: 14px;
-        color: rgba(255, 255, 255, 0.85);
+        color: var(--el-color-danger);
         display: flex;
         align-items: center;
         justify-content: center;
         gap: 5px;
         
         &.up {
-          color: #67C23A;
+          color: var(--el-color-success);
         }
       }
       
@@ -50,7 +47,7 @@
       
       .stat-desc {
         font-size: 13px;
-        color: rgba(255, 255, 255, 0.75);
+        color: var(--el-text-color-secondary);
       }
     }
   }
@@ -66,15 +63,11 @@
         gap: 10px;
         
         .el-select {
-          width: 220px;
+          width: 160px;
         }
       }
     }
     
-    .text-muted {
-      color: var(--el-text-color-placeholder);
-    }
-
     .grade-excellent {
       color: #67C23A;
       font-weight: bold;
@@ -97,15 +90,9 @@
   }
   
   .pagination {
-    margin-top: 16px;
+    margin-top: 20px;
     display: flex;
     justify-content: flex-end;
-    align-items: center;
-    padding: 8px 0;
-
-    .total-info {
-      font-size: 13px;
-      color: var(--el-text-color-secondary);
-    }
+    padding: 10px 0;
   }
 }

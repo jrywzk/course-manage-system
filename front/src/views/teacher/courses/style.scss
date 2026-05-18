@@ -20,6 +20,11 @@
   }
   
   .course-list {
+    .section-list {
+      display: flex;
+      align-items: center;
+      gap: 10px;
+    }
   }
   
   .capacity-info {

@@ -14,7 +14,7 @@ public interface UserMapper {
     @Update("update t_user set password=#{password} where id=#{id}")
     void updateUser(User user);
 
-    @Select("select * from t_user wheere name like contact('%',#{name},'%')")
+    @Select("select * from t_user where id = #{name}")
     List<User> selectByUserName(@Param("name") String userName);
 
     @Select("select * from t_user where role = #{role}")

@@ -16,7 +16,7 @@
         :rules="rules" 
         ref="loginFormRef"
         v-loading="loading"
-        element-loading-text="正在登录..."
+        element-loading-text="正在登录，请稍候..."
         element-loading-background="rgba(0, 0, 0, 0.5)"
       >
         <el-form-item prop="username">
@@ -47,7 +47,7 @@
           @click="handleLogin"
           :loading="loading"
         >
-          <span class="button-text">{{ loading ? '正在登录...' : '登 录' }}</span>
+          <span class="button-text">{{ loading ? '登录中...' : '登 录' }}</span>
           <el-icon class="button-icon" v-if="!loading"><ArrowRight /></el-icon>
         </el-button>
       </el-form>
